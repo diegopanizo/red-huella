@@ -1,8 +1,21 @@
 # API REST
 
+## Autenticación implementada
+
+Todos los POST requieren `Origin` igual a `WEB_ORIGIN`. Registro y login establecen `red_huella_session` con `Path=/api/v1`, alcance suficiente para toda la API autenticada y menor que `/`; el cliente debe incluir credenciales. Ninguna respuesta expone hashes o tokens.
+
+| Método | Ruta                    | Body                        | Éxito                   | Errores principales    |
+| ------ | ----------------------- | --------------------------- | ----------------------- | ---------------------- |
+| POST   | `/api/v1/auth/register` | `name`, `email`, `password` | `201 { user }` + cookie | 400, 409, 429          |
+| POST   | `/api/v1/auth/login`    | `email`, `password`         | `200 { user }` + cookie | 400, 401 genérico, 429 |
+| POST   | `/api/v1/auth/logout`   | ninguno                     | `204` + cookie expirada | 403 por Origin         |
+| GET    | `/api/v1/auth/me`       | ninguno                     | `200 { user }`          | 401                    |
+
+`user` contiene exclusivamente `id`, `name`, `email` y `role`. Logout es idempotente. Los errores siguen `{ error: { code, message, requestId } }`.
+
 ## Estado
 
-La base Express está implementada. Solo el endpoint técnico de salud está disponible; las áreas de negocio permanecen **PLANNED**.
+La base Express y los endpoints de autenticación están implementados. Las áreas de negocio permanecen **PLANNED**.
 
 El modelo y repositories de `users`, `animals` y `publications` son internos. No se han creado endpoints temporales ni se expone acceso directo a persistencia.
 
@@ -41,23 +54,23 @@ Formato de error implementado para fallos globales y rutas desconocidas:
 
 ## Áreas previstas
 
-| Namespace              | Estado  | Responsabilidad futura                     |
-| ---------------------- | ------- | ------------------------------------------ |
-| `/api/v1/auth`         | PLANNED | Registro, login, logout y recuperación     |
-| `/api/v1/users`        | PLANNED | Perfil y derechos sobre datos personales   |
-| `/api/v1/publications` | PLANNED | Publicaciones, búsqueda, filtros y estados |
-| `/api/v1/animals`      | PLANNED | Datos de animales asociados                |
-| `/api/v1/favorites`    | PLANNED | Favoritos del usuario autenticado          |
-| `/api/v1/matches`      | PLANNED | Posibles coincidencias y feedback          |
-| `/api/v1/shelters`     | PLANNED | Protectoras                                |
-| `/api/v1/reports`      | PLANNED | Reportes de contenido                      |
-| `/api/v1/admin`        | PLANNED | Operaciones restringidas de moderación     |
+| Namespace              | Estado      | Responsabilidad futura                                             |
+| ---------------------- | ----------- | ------------------------------------------------------------------ |
+| `/api/v1/auth`         | IMPLEMENTED | Registro, login, logout y usuario actual; recuperación planificada |
+| `/api/v1/users`        | PLANNED     | Perfil y derechos sobre datos personales                           |
+| `/api/v1/publications` | PLANNED     | Publicaciones, búsqueda, filtros y estados                         |
+| `/api/v1/animals`      | PLANNED     | Datos de animales asociados                                        |
+| `/api/v1/favorites`    | PLANNED     | Favoritos del usuario autenticado                                  |
+| `/api/v1/matches`      | PLANNED     | Posibles coincidencias y feedback                                  |
+| `/api/v1/shelters`     | PLANNED     | Protectoras                                                        |
+| `/api/v1/reports`      | PLANNED     | Reportes de contenido                                              |
+| `/api/v1/admin`        | PLANNED     | Operaciones restringidas de moderación                             |
 
 ## Borrador de recursos MVP
 
-Todos estos endpoints son **PLANNED** y se concretarán por milestone:
+Salvo los endpoints de auth ya documentados como implementados, estos endpoints son **PLANNED** y se concretarán por milestone:
 
-- `POST /api/v1/auth/register`, `POST /login`, `POST /logout`.
+- Recuperación de contraseña y verificación de email bajo auth.
 - `GET/PATCH /api/v1/users/me` y operación futura de eliminación.
 - `GET/POST /api/v1/publications`.
 - `GET/PATCH/DELETE /api/v1/publications/{publicationId}` con semántica de borrado por definir.
@@ -66,7 +79,7 @@ Todos estos endpoints son **PLANNED** y se concretarán por milestone:
 
 ## Estados HTTP y seguridad
 
-Se usan actualmente `200`, `404`, `500` y `503`; el resto se incorporará con endpoints reales. Cada respuesta incluye `X-Request-Id`; los errores incluyen el mismo ID en JSON. Los cuerpos JSON están limitados a 100 KB y solo se procesan como `application/json`.
+Se usan actualmente `200`, `201`, `204`, `400`, `401`, `403`, `404`, `409`, `429`, `500` y `503`. Cada respuesta incluye `X-Request-Id`; los errores incluyen el mismo ID en JSON. Los cuerpos JSON están limitados a 100 KB y solo se procesan como `application/json`.
 
 ## Versionado
 

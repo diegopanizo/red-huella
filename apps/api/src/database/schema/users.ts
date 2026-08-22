@@ -16,6 +16,7 @@ export const users = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     name: varchar('name', { length: 120 }).notNull(),
     email: varchar('email', { length: 320 }).notNull(),
+    passwordHash: varchar('password_hash', { length: 255 }),
     role: userRoleEnum('role').default('USER').notNull(),
     status: userStatusEnum('status').default('ACTIVE').notNull(),
     emailVerifiedAt: timestamp('email_verified_at', {

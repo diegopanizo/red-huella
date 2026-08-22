@@ -1,5 +1,9 @@
 # Estrategia de testing
 
+## Cobertura de autenticación
+
+Vitest cubre Argon2id, tokens, expiración, cookies y schemas. La suite PostgreSQL separada verifica users/sessions, unicidad, expiración, revocación y el flujo HTTP completo registro → `/me` → logout → 401. También prueba escalada de rol, duplicados, Origin, credenciales genéricas y 429. Los safeguards de `_test` siguen siendo obligatorios.
+
 ## Estado
 
 **Base implementada.** Vitest se ejecuta por workspace desde la raíz. El frontend usa React Testing Library con jsdom y la API usa Supertest sin abrir un puerto real.

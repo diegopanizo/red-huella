@@ -1,5 +1,9 @@
 # Red Huella
 
+## Authentication
+
+La API usa sesiones opacas revocables persistidas en PostgreSQL. El navegador recibe únicamente una cookie `HttpOnly`; no se guarda autenticación en `localStorage` ni `sessionStorage`. Registro, login, logout y usuario actual están disponibles bajo `/api/v1/auth`.
+
 ## Descripción general
 
 Red Huella es un Trabajo de Fin de Máster en desarrollo. Propone una plataforma web geolocalizada para ayudar a particulares y protectoras a publicar y localizar animales perdidos, encontrados o en adopción. El objetivo es reducir la dispersión de avisos, facilitar búsquedas relevantes y construir un proyecto Full Stack mantenible, seguro y verificable que también pueda servir como portfolio profesional.
@@ -8,7 +12,7 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 3 completado (modelo inicial y persistencia PostgreSQL).**
+**En desarrollo — Milestone 4 completado (autenticación y usuarios iniciales).**
 
 Actualmente existe una plantilla frontend React/Vite y una API Express con health de PostgreSQL, errores sanitizados, request IDs, logging estructurado y cierre gracioso. El schema Drizzle implementa `users`, `animals`, `publications` y `publication_images`, con migration, seed y repositories base. La conexión real sigue pendiente de credenciales locales.
 
@@ -103,7 +107,7 @@ Si Docker está instalado:
 docker compose up -d
 ```
 
-`compose.yml` levanta únicamente PostgreSQL 17, con volumen persistente, healthcheck y credenciales locales documentadas en `.env.example`. Docker Compose es una alternativa reproducible de desarrollo; no representa la estrategia definitiva de producción.
+`compose.yml` levanta únicamente PostgreSQL 17 en `localhost:5434` (el contenedor conserva `5432`), con volumen persistente, healthcheck y credenciales exclusivamente de desarrollo. Docker Compose es un entorno local reproducible opcional; no representa la estrategia definitiva de producción. La aplicación sigue conociendo únicamente `DATABASE_URL`.
 
 ## Migrations y seed
 

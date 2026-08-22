@@ -9,8 +9,12 @@ export const logger = pino({
     paths: [
       'password',
       '*.password',
+      'passwordHash',
+      '*.passwordHash',
       'token',
       '*.token',
+      'tokenHash',
+      '*.tokenHash',
       'authorization',
       'cookie',
       'DATABASE_URL',

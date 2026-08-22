@@ -1,5 +1,10 @@
 # Changelog
 
+## Milestone 4
+
+- Añadidos registro, login, logout y `/me` con Argon2id y sesiones opacas PostgreSQL.
+- Añadidas migración de `password_hash`/`sessions`, cookies seguras, Origin check, rate limiting y pruebas unitarias, HTTP y PostgreSQL.
+
 Todos los cambios relevantes de Red Huella se documentarán aquí siguiendo [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). El proyecto aún no tiene una versión publicada.
 
 ## [Unreleased]

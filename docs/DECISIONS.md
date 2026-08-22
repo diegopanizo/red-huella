@@ -1,5 +1,17 @@
 # Registro de decisiones arquitectónicas
 
+## ADR-018 — Sesiones opacas y seguridad de credenciales
+
+**Status:** Accepted
+
+**Context:** La aplicación web necesita sesiones revocables sin introducir Redis ni complejidad de revocación JWT.
+
+**Decision:** Usar un token aleatorio de 256 bits en cookie HttpOnly SameSite Strict, persistir solo SHA-256 en PostgreSQL y expirar a siete días. Secure se activa en producción; `Path=/api/v1` permite autenticar todas las rutas de la API manteniendo menor alcance que `/`. Los POST validan Origin exacto. Las contraseñas usan Argon2id con 19 MiB, coste temporal 2, paralelismo 1 y salida de 32 bytes; `needsRehash` permite elevar parámetros. El registro crea sesión automáticamente.
+
+**Alternatives:** JWT, sesiones en Redis, cookies firmadas y token CSRF independiente.
+
+**Consequences:** Logout y bloqueo tienen efecto consultando estado persistido. SameSite más Origin ofrecen defensa CSRF proporcional a la arquitectura same-site; si se habilitan orígenes cross-site habrá que rediseñarla. SHA-256 es adecuado para tokens aleatorios de alta entropía, no para contraseñas. El rate limiter en memoria no coordina múltiples instancias.
+
 Los ADR son simplificados. Un cambio posterior conservará la decisión anterior y añadirá un nuevo ADR que la sustituya.
 
 ## ADR-001 — React + Vite para frontend
@@ -204,4 +216,4 @@ Los ADR son simplificados. Un cambio posterior conservará la decisión anterior
 
 **Alternatives:** Exigir instalación local, dockerizar todo el monorepo o usar una base embebida.
 
-**Consequences:** La aplicación no conoce Docker y puede apuntar a local/cloud. Docker es opcional y sus credenciales son solo de desarrollo. La instalación PostgreSQL 9.5 detectada no es la versión objetivo.
+**Consequences:** La aplicación no conoce Docker y puede apuntar a local/cloud. Docker es opcional, publica `5434:5432` para no colisionar con PostgreSQL Windows en 5432/5433 y sus credenciales son solo de desarrollo. La instalación PostgreSQL 9.5 detectada no es la versión objetivo.

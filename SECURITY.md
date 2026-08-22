@@ -1,8 +1,20 @@
 # Política y estrategia de seguridad
 
+## Autenticación implementada en Milestone 4
+
+- Contraseñas Argon2id (19 MiB, 2 iteraciones, paralelismo 1, salida 32 bytes), con comprobación futura de rehash.
+- Tokens opacos aleatorios de 256 bits; PostgreSQL guarda únicamente SHA-256, con expiración a siete días y revocación.
+- Cookie `red_huella_session` HttpOnly, SameSite Strict, `Path=/api/v1`, Max-Age/Expires y Secure en producción. El alcance permite autenticación en toda la API sin ampliarlo innecesariamente a `/`.
+- Registro público forzado a `USER`, DTO explícito sin hashes y errores genéricos de login con verificación dummy.
+- Origin exacto contra `WEB_ORIGIN` en POST de autenticación, además de CORS explícito con credenciales.
+- Rate limiting en memoria: producción 8 logins/15 minutos y 5 registros/hora por IP; desarrollo/test usa 100.
+- El logger no registra bodies/headers y redacta password, passwordHash, token, tokenHash, cookie y Authorization.
+
+Siguen planificados recuperación de contraseña, verificación de email, MFA si el riesgo lo exige, moderación administrativa, rate limiting distribuido y autorización por propiedad de recurso.
+
 ## Alcance y estado
 
-Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha completado el Milestone 3, pero todavía no expone endpoints de dominio ni procesa datos de usuarios reales.
+Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha completado el Milestone 4 y expone autenticación, pero todavía no endpoints funcionales de publicaciones.
 
 ### Implementado
 
@@ -21,7 +33,7 @@ Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha
 
 ### Planificado
 
-Siguen planificados autenticación, hashing de contraseñas, protección CSRF según la sesión elegida, rate limiting específico, uploads seguros, roles y autorización por recurso. La configuración CORS definitiva de producción también sigue pendiente.
+Siguen planificados recuperación y verificación de email, uploads seguros, moderación y autorización por propiedad de recurso. La configuración CORS definitiva de producción se obtiene de `WEB_ORIGIN` y debe validarse durante el despliegue.
 
 ## Principios
 
@@ -47,13 +59,13 @@ Siguen planificados autenticación, hashing de contraseñas, protección CSRF se
 | Filtración de secretos     | Variables de entorno, almacén de secretos en despliegue, rotación y escaneo en CI                                                   |
 | Acceso horizontal indebido | Autorización backend por acción y recurso, con tests negativos                                                                      |
 
-## Autenticación y sesiones planificadas
+## Autenticación y sesiones
 
-- La estrategia concreta de sesión se decidirá mediante ADR antes de implementarla.
-- Las contraseñas se almacenarán únicamente como hashes con salt mediante un algoritmo adecuado (por ejemplo, Argon2id, sujeto a decisión y benchmark).
-- Si se eligen cookies de sesión, serán `HttpOnly`, `Secure` en producción y con `SameSite` definido conscientemente.
-- Login, recuperación y operaciones sensibles tendrán protección frente a fuerza bruta.
-- Tokens y sesiones tendrán expiración, rotación o revocación acorde al riesgo.
+- La estrategia vigente está definida en ADR-018 y usa sesiones opacas PostgreSQL.
+- Las contraseñas se almacenan únicamente como hashes Argon2id con salt generado por la librería.
+- Las cookies son `HttpOnly`, `Secure` en producción y `SameSite=Strict`.
+- Login y registro tienen protección por IP frente a fuerza bruta; recuperación sigue pendiente.
+- Tokens y sesiones expiran y pueden revocarse; la rotación adicional se evaluará según riesgo.
 
 ## Autorización planificada
 

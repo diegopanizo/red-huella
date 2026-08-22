@@ -8,6 +8,13 @@
       "when": 1787394000033,
       "tag": "0000_blue_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787399325014,
+      "tag": "0001_rare_songbird",
+      "breakpoints": true
     }
   ]
 }

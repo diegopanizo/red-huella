@@ -1,5 +1,7 @@
 # AGENTS.md — Guía de desarrollo de Red Huella
 
+Estado: Milestone 4 implementado; el siguiente alcance autorizado es Milestone 5. La autenticación vigente usa sesiones opacas PostgreSQL y cookies HttpOnly.
+
 Este archivo contiene reglas obligatorias para cualquier persona o agente que modifique el repositorio. Antes de cambiar código, se debe inspeccionar el estado real y respetar el alcance del milestone activo.
 
 ## Arquitectura

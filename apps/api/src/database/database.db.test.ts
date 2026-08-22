@@ -10,6 +10,7 @@ import { env } from '../config/index.js'
 import { DatabaseError } from '../errors/app-error.js'
 import { DrizzleAnimalRepository } from '../repositories/drizzle-animal.repository.js'
 import { DrizzlePublicationRepository } from '../repositories/drizzle-publication.repository.js'
+import { DrizzleSessionRepository } from '../repositories/drizzle-session.repository.js'
 import { DrizzleUserRepository } from '../repositories/drizzle-user.repository.js'
 import { assertSafeTestDatabaseUrl } from './test-database.js'
 import * as schema from './schema/index.js'
@@ -20,6 +21,7 @@ const testDatabase = drizzle({ client: testPool, schema })
 const userRepository = new DrizzleUserRepository(testDatabase)
 const animalRepository = new DrizzleAnimalRepository(testDatabase)
 const publicationRepository = new DrizzlePublicationRepository(testDatabase)
+const sessionRepository = new DrizzleSessionRepository(testDatabase)
 
 async function createPublicationFixture() {
   const user = await userRepository.create({
@@ -37,6 +39,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await testDatabase.delete(schema.sessions)
   await testDatabase.delete(schema.publicationImages)
   await testDatabase.delete(schema.publications)
   await testDatabase.delete(schema.animals)
@@ -52,14 +55,58 @@ describe('PostgreSQL persistence', () => {
     const result = await testPool.query<{ table_name: string }>(
       `select table_name from information_schema.tables
        where table_schema = 'public'
-       and table_name in ('users', 'animals', 'publications', 'publication_images')`,
+       and table_name in ('users', 'animals', 'publications', 'publication_images', 'sessions')`,
     )
     expect(result.rows.map((row) => row.table_name).sort()).toEqual([
       'animals',
       'publication_images',
       'publications',
+      'sessions',
       'users',
     ])
+  })
+
+  it('persists only a session token hash and enforces uniqueness, expiry and revocation', async () => {
+    const user = await userRepository.create({
+      name: 'Session User',
+      email: 'session@example.test',
+      passwordHash: '$argon2id$fixture',
+    })
+    const now = new Date()
+    const tokenHash = 'a'.repeat(64)
+    const session = await sessionRepository.create({
+      userId: user.id,
+      tokenHash,
+      expiresAt: new Date(now.getTime() + 60_000),
+    })
+    await expect(
+      sessionRepository.findActiveByTokenHash(tokenHash, now),
+    ).resolves.toEqual(session)
+    await expect(
+      sessionRepository.create({
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(now.getTime() + 60_000),
+      }),
+    ).rejects.toBeInstanceOf(DatabaseError)
+    await sessionRepository.revokeByTokenHash(tokenHash, now)
+    await expect(
+      sessionRepository.findActiveByTokenHash(tokenHash, now),
+    ).resolves.toBeUndefined()
+
+    const expiredHash = 'b'.repeat(64)
+    await testDatabase.insert(schema.sessions).values({
+      userId: user.id,
+      tokenHash: expiredHash,
+      createdAt: new Date(now.getTime() - 120_000),
+      expiresAt: new Date(now.getTime() - 60_000),
+    })
+    await expect(
+      sessionRepository.findActiveByTokenHash(expiredHash, now),
+    ).resolves.toBeUndefined()
+    await expect(
+      sessionRepository.deleteExpired(now),
+    ).resolves.toBeGreaterThanOrEqual(1)
   })
 
   it('normalizes email, inserts a user and finds it by UUID', async () => {

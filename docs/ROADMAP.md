@@ -24,11 +24,11 @@ Implementados tooling PostgreSQL/Drizzle, pool central, logging, errores, health
 
 Implementados cuatro tablas, migration, seed, constraints, índices, repositories, Compose opcional y suite PostgreSQL separada. La ejecución local real queda pendiente de credenciales.
 
-## Milestone 4 — Autenticación y gestión inicial de usuarios (siguiente)
+## Milestone 4 — Autenticación y gestión inicial de usuarios (completado)
 
-Registro, sesión, hashing, autorización base, recuperación diseñada y tests de abuso.
+Registro, sesión opaca persistente, Argon2id, autorización base y tests de abuso. Recuperación y verificación de email quedan planificadas.
 
-## Milestone 5 — Publicaciones
+## Milestone 5 — Publicaciones (siguiente)
 
 Modelo y API para animales/publicaciones, estados, propiedad, validación y tests.
 

@@ -26,6 +26,17 @@ export class DrizzleUserRepository implements UserRepository {
     })
   }
 
+  findByEmail(email: string) {
+    return runDatabaseOperation(async () => {
+      const [user] = await this.database
+        .select()
+        .from(users)
+        .where(eq(users.email, normalizeEmail(email)))
+        .limit(1)
+      return user
+    })
+  }
+
   create(data: CreateUserData) {
     return runDatabaseOperation(async () => {
       const [user] = await this.database

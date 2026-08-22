@@ -1,6 +1,8 @@
 # Estrategia de deployment
 
-**Estado: Pendiente.** No hay infraestructura, Docker, pipeline ni entorno desplegado. Las plataformas se elegirán cuando existan requisitos operativos medibles.
+**Estado: Pendiente.** No hay infraestructura ni entorno desplegado. Existe CI y un Compose opcional exclusivamente para un PostgreSQL 17 local reproducible; no es una arquitectura de producción. Las plataformas se elegirán cuando existan requisitos operativos medibles.
+
+La aplicación depende únicamente de `DATABASE_URL`: PostgreSQL puede proceder de una instalación Windows local, Docker o un servicio cloud sin cambios en el código. Compose publica `5434:5432` para no colisionar con las instalaciones locales en 5432 y 5433. Sus credenciales `red_huella_app`/`red_huella_dev_only` son development-only y nunca deben reutilizarse en producción.
 
 ## Topología futura
 
@@ -36,4 +38,4 @@ Se prevén al menos local, CI/test y producción. Un staging solo se añadirá s
 
 ## Decisiones pendientes
 
-Hosting, región, dominio, almacenamiento de imágenes, estrategia de backups, observabilidad, presupuesto y objetivos de disponibilidad. Docker no se introducirá hasta que facilite un entorno o despliegue definido.
+Hosting, región, dominio, almacenamiento de imágenes, estrategia de backups, observabilidad, presupuesto y objetivos de disponibilidad. El Compose local no determina el empaquetado ni el despliegue futuro de la aplicación.

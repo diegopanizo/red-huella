@@ -1,8 +1,14 @@
 # Arquitectura
 
+## Flujo de autenticación
+
+`Browser → Controller/validación → Register/Login Service → User/Session Repository → PostgreSQL → cookie HttpOnly`.
+
+En rutas protegidas: `Cookie → requireAuth → hash de token → SessionRepository → UserRepository → request.auth → controller`. La cookie usa `Path=/api/v1`, suficiente para todas las rutas versionadas y más restrictivo que `/`. `requireAuth` establece identidad; `requireRole` trata autorización global. La propiedad de recursos permanece fuera de este milestone.
+
 ## Estado y objetivos
 
-**Estado: arquitectura aceptada; persistencia inicial del Milestone 3 implementada.**
+**Estado: arquitectura aceptada; autenticación del Milestone 4 implementada.**
 
 La arquitectura prioriza separación de responsabilidades, cambios incrementales y testabilidad. Se mantendrá un monorepo porque frontend, API, contratos y documentación evolucionarán juntos. No se incorporarán servicios distribuidos sin una necesidad demostrada.
 

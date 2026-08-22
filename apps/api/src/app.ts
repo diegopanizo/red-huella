@@ -9,10 +9,12 @@ import { notFound } from './middleware/not-found.js'
 import { requestId } from './middleware/request-id.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { createHealthRouter } from './routes/health.routes.js'
+import { createAuthRouter } from './routes/auth.routes.js'
 import { HealthService } from './services/health.service.js'
 
 export interface AppDependencies {
   healthService?: HealthService
+  authRouter?: express.Router
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -33,6 +35,7 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(express.json({ limit: '100kb', type: 'application/json' }))
 
   app.use('/api/v1/health', createHealthRouter(healthService))
+  app.use('/api/v1/auth', dependencies.authRouter ?? createAuthRouter())
   app.use(notFound)
   app.use(errorHandler)
 
