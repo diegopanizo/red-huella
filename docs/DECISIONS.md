@@ -1,5 +1,13 @@
 # Registro de decisiones arquitectónicas
 
+## ADR-020 — Routing, server-state, formularios y CSS frontend
+
+**Status:** Accepted
+
+**Decision:** Usar React Router para navegación, TanStack Query para estado remoto, React Hook Form con Zod en autenticación y cliente fetch central con `credentials: include`. Usar CSS propio centralizado y mobile-first sin framework UI.
+
+**Consequences:** Filtros quedan en URL, caches tienen claves explícitas y auth depende de `/me`. Se añaden dependencias acotadas; el formulario amplio de publicaciones conserva validación HTML más autoridad backend y podrá migrarse gradualmente a schemas compartidos si aporta valor.
+
 ## ADR-019 — Ownership, transacciones y retirada de publicaciones
 
 **Status:** Accepted

@@ -1,6 +1,6 @@
 # AGENTS.md — Guía de desarrollo de Red Huella
 
-Estado: Milestone 5 implementado; el siguiente alcance es Milestone 6, sujeto a aprobación. La autenticación usa sesiones opacas PostgreSQL y las mutaciones de publicaciones aplican ownership y Origin en backend.
+Estado: Milestone 6 implementado; el siguiente alcance es Milestone 7, sujeto a aprobación. El frontend consume la API mediante cookies HttpOnly y el backend conserva toda autoridad de autenticación y ownership.
 
 Este archivo contiene reglas obligatorias para cualquier persona o agente que modifique el repositorio. Antes de cambiar código, se debe inspeccionar el estado real y respetar el alcance del milestone activo.
 

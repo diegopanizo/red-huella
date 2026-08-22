@@ -1,5 +1,10 @@
 # Changelog
 
+## Milestone 6
+
+- Sustituido el scaffold de Vite por una interfaz responsive con routing, autenticación, exploración, detalle y gestión de publicaciones.
+- Añadidos cliente HTTP central, TanStack Query, formularios validados, estados de carga/error/vacío y tests de comportamiento frontend.
+
 ## Milestone 5
 
 - API backend de publicaciones con creación atómica de animal/publicación, lectura pública, listado paginado y publicaciones propias.

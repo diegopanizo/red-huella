@@ -1,5 +1,9 @@
 # Estrategia de testing
 
+## Frontend funcional
+
+Vitest, React Testing Library y jsdom prueban render tras loading, card/placeholder, filtros en URL, empty state, redirección protegida, validación de registro y submit de login con `credentials: include`. Se prueban resultados observables, no snapshots.
+
 ## Publicaciones
 
 Tests unitarios cubren schemas, límites de paginación, DTO y matriz de estados. La suite PostgreSQL prueba los tres tipos, filtros, orden, paginación, lectura, dos usuarios con ownership, Origin, auth, edición compuesta, transiciones, `/mine` y rollback real de create/update.

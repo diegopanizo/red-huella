@@ -32,11 +32,11 @@ Registro, sesión opaca persistente, Argon2id, autorización base y tests de abu
 
 Modelo y API para animales/publicaciones, estados, propiedad, validación y tests.
 
-## Milestone 6 — Frontend funcional (siguiente)
+## Milestone 6 — Frontend funcional (completado)
 
 Navegación, identidad y flujos de publicaciones accesibles y responsive conectados a la API.
 
-## Milestone 7 — Geolocalización
+## Milestone 7 — Geolocalización (siguiente)
 
 PostGIS, búsquedas espaciales y separación verificada entre ubicación exacta y pública.
 

@@ -1,5 +1,13 @@
 # Política y estrategia de seguridad
 
+## Seguridad frontend
+
+- `/auth/me` es la única fuente de verdad de identidad; no se usan JWT, `localStorage` ni `sessionStorage`.
+- `fetch` incluye credenciales, pero JavaScript no lee ni modifica la cookie HttpOnly.
+- Las rutas protegidas son una medida UX; Express sigue validando sesión, Origin y ownership.
+- No se usa `dangerouslySetInnerHTML` ni se almacenan passwords tras los formularios.
+- Un 403 se muestra como falta de permisos sin cerrar sesión; errores inesperados pueden mostrar el request ID.
+
 ## Publicaciones implementadas en Milestone 5
 
 - Toda mutación exige sesión y Origin exacto contra `WEB_ORIGIN`.

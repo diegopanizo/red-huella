@@ -1,5 +1,11 @@
 # Arquitectura
 
+## Flujo frontend
+
+`Page/feature → TanStack Query o formulario → cliente API central → fetch credentials: include → Express API`.
+
+`AuthProvider` mantiene una única query `['auth','me']`. React Router separa rutas públicas y protegidas; estas últimas redirigen a login solo como UX. Los formularios auth usan React Hook Form/Zod y los formularios de publicación construyen allowlists explícitas. CSS propio responsive evita acoplamiento a un framework visual.
+
 ## Flujo de publicaciones
 
 `Authenticated Request → Controller/Zod → CreatePublicationService → Drizzle transaction → Animal + Publication → PostgreSQL`.

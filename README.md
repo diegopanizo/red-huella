@@ -6,7 +6,11 @@ La API usa sesiones opacas revocables persistidas en PostgreSQL. El navegador re
 
 ## Publications backend
 
-El backend permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado con reglas explícitas y consultar las publicaciones propias. Ownership, paginación y filtros se aplican en servidor. Todavía no existe UI funcional de publicaciones, búsqueda geográfica ni upload.
+El backend permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado con reglas explícitas y consultar las publicaciones propias. Ownership, paginación y filtros se aplican en servidor. Todavía no existen búsqueda geográfica ni upload.
+
+## Frontend funcional
+
+La web incluye rutas públicas de exploración, detalle, login y registro, además de creación, edición y publicaciones propias protegidas por estado de sesión. Configura `VITE_API_URL` desde `apps/web/.env.example`; es una URL pública, nunca un secreto. La sesión procede de `/auth/me` y la cookie HttpOnly no se lee ni almacena desde JavaScript.
 
 ## Descripción general
 
