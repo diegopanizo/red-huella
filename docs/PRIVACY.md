@@ -42,6 +42,10 @@ El selector frontend no solicita geolocalización al cargar ni persiste coordena
 
 La exploración cercana también solicita permiso solo tras una acción explícita. El centro del visitante vive en memoria, no se incorpora a la URL visible ni a Web Storage y se descarta, junto con su caché geográfica, al quitar la búsqueda. Se transmite a la API únicamente para ejecutar la consulta solicitada. Cards y mapas públicos reciben solo `publicLocation`; las distancias se describen como aproximadas respecto del centro público y nunca como distancia al animal o al punto exacto.
 
+El endpoint backend del mapa global filtra y devuelve exclusivamente `public_location`. Su DTO mínimo no incluye exacta, legacy, autor, contacto ni descripción. Una prueba de regresión mantiene separados ambos puntos: exacta dentro/pública fuera queda excluida y pública dentro/exacta fuera queda incluida. Los bounds viajan en query por necesidad funcional, pero el logger solo registra el path y los errores no los reproducen.
+
+La interfaz global consume únicamente ese DTO. Markers, popup y mini lista no representan coordenadas ni radio como texto, y no reciben autor, contacto, descripción o exacta. La forma redondeada con halo y letra por tipo evita sugerir precisión y no depende solo del color; una leyenda explica que son zonas aproximadas. No solicita geolocalización ni persiste applied/pending bounds o selección en Web Storage. Pan y zoom solo modifican estado efímero; los bounds aparecen en la URL de API exclusivamente tras la acción explícita **Buscar en esta zona**. No se escriben en logs frontend.
+
 El Bloque 3 implementa esa separación completa: búsqueda, distancia y orden públicos usan solo el punto aproximado. `/manage` es la única respuesta de publicación que puede contener `exactLocation`, requiere owner y no permite caché compartida; ADOPTION devuelve exacta `null`. La distancia expuesta se redondea y describe distancia al centro público, no al lugar exacto.
 
 ## Imágenes y EXIF

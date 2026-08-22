@@ -120,6 +120,8 @@ Un animal puede aparecer en varias publicaciones a lo largo del tiempo. `event_d
 
 El Bloque 3 usa ese GiST mediante `ST_DWithin` y calcula `ST_Distance` en metros. Filtro y distancia públicos referencian exclusivamente `public_location`; `exact_location` no aparece en el SELECT público. Los mismos predicados se reutilizan para filas y count, combinados con tipo, especie, estado, ownership y archivado.
 
+Milestone 10 no añade migraciones. `findForMapViewport` reutiliza `publications_public_location_gist_idx`: aplica `&&` contra un envelope 4326 convertido a geography y confirma inclusión con `ST_Covers` en geometry. Un viewport que cruza el antimeridiano se divide en `west..180 OR -180..east`, manteniendo las dos ramas aptas para GiST. El SELECT no contiene `exact_location`, legacy, contacto ni storage keys; une `publication_images` solo por `position = 0`, ordena establemente y limita a 501 sin count.
+
 Las columnas legacy se convierten mediante un backfill explícito e idempotente: LOST/FOUND trasladan el punto a exacta y generan una zona aleatoria; ADOPTION usa el legacy solo como referencia y deja exacta `NULL`; filas sin coordenadas permanecen vacías. Tras escribir el modelo completo se limpian `latitude`/`longitude`. Su eliminación física queda para otra migración. Nunca se copia la exacta directamente como pública.
 
 ### Imágenes

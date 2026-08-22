@@ -1,5 +1,13 @@
 # Registro de decisiones arquitectónicas
 
+## ADR-024 — Contrato backend del mapa global
+
+**Status:** Accepted, partially implemented
+
+**Decision:** Consultar el viewport mediante un endpoint y repository específicos que usan exclusivamente `public_location`, con envelopes PostGIS indexables, división al cruzar el antimeridiano, DTO mínimo, thumbnail principal en el mismo query y tope fijo 500+1. La ruta pública aplica validación estricta, ETag/revalidación y rate limit por IP.
+
+**Consequences:** No se reutilizan el listado paginado, su count ni el aggregate público completo; no se requiere migración. El backend del Bloque 1 queda implementado y el mapa frontend/clustering permanecen pendientes. Véase [ADR-024](ADR-024-GLOBAL-PUBLICATION-MAP.md).
+
 ## ADR-023 — Métodos de contacto por publicación
 
 **Status:** Accepted

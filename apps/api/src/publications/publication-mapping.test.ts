@@ -6,6 +6,7 @@ import { toPublicPublicationDto } from './dto.js'
 import {
   createPublicationSchema,
   listPublicationsSchema,
+  mapPublicationsSchema,
   updatePublicationSchema,
 } from './schemas.js'
 
@@ -65,6 +66,39 @@ describe('publication validation, pagination and DTO', () => {
       { latitude: '0', longitude: '0', radiusMeters: '100001' },
     ])
       expect(listPublicationsSchema.safeParse(query).success).toBe(false)
+  })
+
+  it('validates strict Web Mercator viewport queries and antimeridian bounds', () => {
+    expect(
+      mapPublicationsSchema.parse({
+        north: '50',
+        south: '40',
+        west: '170',
+        east: '-170',
+      }),
+    ).toEqual({
+      north: 50,
+      south: 40,
+      west: 170,
+      east: -170,
+      status: 'ACTIVE',
+    })
+    for (const query of [
+      {},
+      { north: 50, south: 50, west: -5, east: 5 },
+      { north: 40, south: 50, west: -5, east: 5 },
+      { north: 86, south: 40, west: -5, east: 5 },
+      { north: 50, south: 40, west: -181, east: 5 },
+      { north: 50, south: 40, west: 5, east: 5 },
+      { north: '', south: 40, west: -5, east: 5 },
+      { north: 'NaN', south: 40, west: -5, east: 5 },
+      { north: 'Infinity', south: 40, west: -5, east: 5 },
+      { north: 50, south: 40, west: -5, east: 5, status: 'ARCHIVED' },
+      { north: 50, south: 40, west: -5, east: 5, page: 1 },
+      { north: 50, south: 40, west: -5, east: 5, radius: 1_000 },
+      { north: 50, south: 40, west: -5, east: 5, zoom: 8 },
+    ])
+      expect(mapPublicationsSchema.safeParse(query).success).toBe(false)
   })
 
   it('allowlists public author and aggregate fields', () => {

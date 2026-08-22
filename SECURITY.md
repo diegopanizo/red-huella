@@ -108,6 +108,8 @@ ADR-022 separa una ubicación interna exacta de una ubicación pública aproxima
 
 La API geográfica implementada valida el trío de búsqueda y radios 500–100.000 m, parametriza SQL PostGIS y excluye ubicación pública nula. `/manage` exige sesión y owner, responde `private, no-store` y no expone versión ni formatos espaciales. El logger conserva solo `request.path`, nunca query string, y no se añadieron logs de coordenadas. Errores de validación y persistencia siguen sanitizados.
 
+El mapa global valida estrictamente bounds Web Mercator y filtros allowlist, rechaza parámetros desconocidos y `ARCHIVED`, parametriza ambos envelopes del antimeridiano y limita el repository a 501 filas. La respuesta máxima es 500, con selección mínima y sin count. Un rate limiter en memoria aplica 60 consultas/minuto/IP y devuelve el error estable `MAP_RATE_LIMITED`; despliegues multiinstancia requerirán store compartido. La caché exige revalidación y Express genera ETag.
+
 La búsqueda cercana del navegador solicita geolocalización solo tras un click, conserva el centro en memoria y lo descarta al desactivar la búsqueda. No usa Web Storage ni añade coordenadas a analytics o logs. `PublicLocationMap` acepta exclusivamente el DTO público aproximado.
 
 ## Contacto por publicación

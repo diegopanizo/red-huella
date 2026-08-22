@@ -20,7 +20,9 @@ Los listados muestran el thumbnail principal o un placeholder. El detalle permit
 
 **Estado: aplicación en desarrollo.**
 
-La interfaz permite identidad, publicaciones, filtros, imágenes y seleccionar ubicación mediante mapa al crear o editar. Todavía no incluye el mapa general de exploración, favoritos, PWA, administración ni matching visual.
+La interfaz permite identidad, publicaciones, filtros, imágenes, seleccionar ubicación al crear o editar y una vista global interactiva del mapa en Explorar. Todavía no incluye clustering, favoritos, PWA, administración ni matching visual.
+
+La portada ofrece acceso directo a **Explorar publicaciones** y **Publicar un aviso**. Los filtros de tipo, especie, estado, orden y **Cerca de mí** están reunidos en una única barra de exploración. Todas las fichas públicas incluyen la acción textual **Ver ficha**; en **Mis publicaciones** también aparece **Editar ficha**, aplicando después las mismas restricciones de estado y propiedad ya existentes.
 
 En crear o editar, pulsa el mapa, arrastra el marcador o abre **Introducir coordenadas manualmente**. **Usar mi ubicación** solicita permiso solo al pulsarlo; denegarlo no bloquea el formulario. **Quitar ubicación** expresa que se desea publicar sin ella. LOST/FOUND guardan el punto exacto de forma privada; ADOPTION interpreta la selección como zona y no debe usarse para introducir un domicilio.
 
@@ -29,6 +31,16 @@ La edición carga el contrato privado owner. Al pasar ADOPTION a LOST/FOUND hay 
 En **Explorar**, **Buscar cerca de mí** solicita la ubicación solo al pulsarlo y usa inicialmente 25 km. Con la búsqueda activa se puede escoger 5, 10, 25, 50 o 100 km, mantener los filtros de tipo/especie/estado y ver resultados ordenados por cercanía. **Quitar búsqueda por cercanía** vuelve al listado normal y descarta el centro. Las distancias de las cards son aproximadas respecto de la zona pública.
 
 El detalle público muestra, cuando existe ubicación, un círculo aproximado sin marcador ni coordenadas. LOST habla de la zona donde se reportó la pérdida, FOUND de la zona donde fue encontrado y ADOPTION de una zona de referencia.
+
+### Mapa de publicaciones
+
+En **Explorar**, la sección **Mapa de publicaciones** reutiliza los filtros de tipo, especie y estado. Sin estado explícito muestra activas. Presenta una mini lista accesible y marcadores con letras P/E/A para perdido, encontrado y adopción. Elegir una mini ficha resalta y centra moderadamente su marcador; elegir un marcador resalta la ficha. Solo **Ver publicación** abre el detalle.
+
+En escritorio amplio, la mini lista y el mapa aprovechan un contenedor expandido y mantienen alturas alineadas; la lista dispone de scroll propio. En móvil se muestran apilados, primero la lista y después el mapa. Las fotografías de fichas y popups se recortan proporcionalmente dentro de dimensiones estables para evitar deformaciones o saltos de layout.
+
+Los puntos son centros de zonas públicas aproximadas, no ubicaciones exactas. Popups y mini fichas omiten coordenadas, radio técnico, autor, contacto y descripción. La vista inicial de España es configuración de demo y no limita el dominio.
+
+Al mover o ampliar el mapa aparece **Buscar en esta zona**. El movimiento por sí solo no consume red: los resultados cambian únicamente al pulsar el botón. Puedes mover varias veces y se aplicará el último viewport. Los filtros sí se aplican inmediatamente sobre la última zona cargada; una zona pendiente continúa pendiente hasta pulsar el botón. Si una actualización falla o alcanza el rate limit, se conservan los últimos resultados y se ofrece reintento manual. Si el servidor indica que se alcanzó el máximo, acerca el mapa, pulsa **Buscar en esta zona** o aplica filtros. La mini lista continúa disponible si fallan los tiles.
 
 ## Imágenes y privacidad
 

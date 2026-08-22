@@ -32,8 +32,6 @@ import {
   PublicationGallery,
 } from './features/images/PublicationImages'
 import { usePendingImages } from './features/images/usePendingImages'
-import { LocationPicker } from './features/locations/LocationPicker'
-import { PublicLocationMap } from './features/locations/PublicLocationMap'
 import { api, ApiError, resolveApiAssetUrl } from './services/api'
 import type {
   ContactMethodType,
@@ -42,6 +40,22 @@ import type {
   PublicationType,
 } from './types'
 import './App.css'
+
+const LocationPicker = React.lazy(() =>
+  import('./features/locations/LocationPicker').then((module) => ({
+    default: module.LocationPicker,
+  })),
+)
+const PublicLocationMap = React.lazy(() =>
+  import('./features/locations/PublicLocationMap').then((module) => ({
+    default: module.PublicLocationMap,
+  })),
+)
+const GlobalMapSection = React.lazy(() =>
+  import('./features/locations/GlobalMapSection').then((module) => ({
+    default: module.GlobalMapSection,
+  })),
+)
 
 const labels = {
   LOST: 'Perdido',
@@ -108,6 +122,7 @@ function Empty({ children }: { children: string }) {
 function Layout() {
   const auth = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   return (
     <>
       <a className="skip" href="#main">
@@ -121,7 +136,6 @@ function Layout() {
           <Link to="/">Explorar</Link>
           {auth.authenticated && (
             <>
-              <Link to="/publications/new">Publicar</Link>
               <Link to="/my-publications">Mis publicaciones</Link>
             </>
           )}
@@ -140,12 +154,24 @@ function Layout() {
               </Link>
             </>
           )}
+          {auth.authenticated && (
+            <Link className="nav-cta" to="/publications/new">
+              Publicar aviso
+            </Link>
+          )}
         </nav>
       </header>
-      <main id="main">
+      <main
+        id="main"
+        className={location.pathname === '/' ? 'explore-main' : undefined}
+      >
         <Outlet />
       </main>
-      <footer>Red Huella · Una comunidad para volver a encontrarnos.</footer>
+      <footer>
+        <strong>Red Huella</strong>
+        <span>Privacidad y bienestar en cada encuentro.</span>
+        <small>© 2026 Red Huella</small>
+      </footer>
     </>
   )
 }
@@ -160,7 +186,13 @@ function Protected() {
   )
 }
 
-function Card({ publication }: { publication: Publication }) {
+function Card({
+  publication,
+  owner = false,
+}: {
+  publication: Publication
+  owner?: boolean
+}) {
   const [imageBroken, setImageBroken] = React.useState(false)
   const primary = [...publication.images].sort(
     (left, right) => left.position - right.position,
@@ -222,19 +254,63 @@ function Card({ publication }: { publication: Publication }) {
           </div>
         )}
         <p className="author">Publicado por {publication.author.name}</p>
+        <div className="card-actions">
+          <Link className="button" to={`/publications/${publication.id}`}>
+            Ver ficha
+          </Link>
+          {owner && (
+            <Link
+              className="button secondary-link"
+              to={`/publications/${publication.id}/edit`}
+            >
+              Editar ficha
+            </Link>
+          )}
+        </div>
       </div>
     </article>
   )
 }
-function PublicationGrid({ items }: { items: Publication[] }) {
+function PublicationGrid({
+  items,
+  owner = false,
+}: {
+  items: Publication[]
+  owner?: boolean
+}) {
   return items.length ? (
     <div className="grid">
       {items.map((item) => (
-        <Card key={item.id} publication={item} />
+        <Card key={item.id} publication={item} owner={owner} />
       ))}
     </div>
   ) : (
     <Empty>No hay publicaciones con estos filtros.</Empty>
+  )
+}
+
+function HeroVisual({ publication }: { publication: Publication | undefined }) {
+  const primary = publication
+    ? [...publication.images].sort(
+        (left, right) => left.position - right.position,
+      )[0]
+    : undefined
+  return (
+    <div className="hero-visual">
+      {publication && primary ? (
+        <img
+          src={resolveApiAssetUrl(primary.thumbnailUrl)}
+          alt={`Imagen destacada de ${publication.animal.name ?? publication.title}`}
+          width={primary.width ?? undefined}
+          height={primary.height ?? undefined}
+        />
+      ) : (
+        <div
+          className="hero-visual-fallback"
+          aria-label="Imagen destacada no disponible"
+        />
+      )}
+    </div>
   )
 }
 
@@ -324,133 +400,156 @@ function Home() {
     })
     update('page', '1')
   }
+  const mapType = params.get('type')
+  const mapSpecies = params.get('species')
+  const mapStatus = params.get('status')
+  const mapFilters: {
+    type?: PublicationType
+    species?: 'DOG' | 'CAT' | 'OTHER'
+    status?: 'ACTIVE' | 'RESOLVED' | 'ADOPTED'
+  } = {
+    ...(mapType === 'LOST' || mapType === 'FOUND' || mapType === 'ADOPTION'
+      ? { type: mapType }
+      : {}),
+    ...(mapSpecies === 'DOG' || mapSpecies === 'CAT' || mapSpecies === 'OTHER'
+      ? { species: mapSpecies }
+      : {}),
+    ...(mapStatus === 'ACTIVE' ||
+    mapStatus === 'RESOLVED' ||
+    mapStatus === 'ADOPTED'
+      ? { status: mapStatus }
+      : {}),
+  }
   return (
     <>
       <section className="hero">
-        <p className="eyebrow">Personas y animales, más cerca</p>
-        <h1>Ayudamos a que cada huella vuelva a casa.</h1>
-        <p>Explora avisos de animales perdidos, encontrados y en adopción.</p>
-        <div className="hero-actions">
-          <button onClick={() => update('type', 'LOST')}>Ver perdidos</button>
-          <button className="secondary" onClick={() => update('type', 'FOUND')}>
-            Ver encontrados
-          </button>
-          <button
-            className="secondary"
-            onClick={() => update('type', 'ADOPTION')}
-          >
-            Ver adopciones
-          </button>
+        <div className="hero-copy">
+          <p className="eyebrow">Personas y animales, más cerca</p>
+          <h1>Ayudamos a que cada huella vuelva a casa.</h1>
+          <p>
+            Encuentra animales perdidos, encontrados y en adopción cerca de ti.
+          </p>
+          <div className="hero-actions">
+            <a className="button" href="#publications-title">
+              Explorar publicaciones
+            </a>
+            <Link className="button secondary-link" to="/publications/new">
+              Publicar un aviso
+            </Link>
+          </div>
         </div>
+        <HeroVisual publication={result.data?.items[0]} />
       </section>
       <section aria-labelledby="publications-title">
         <div className="section-title">
           <div>
-            <p className="eyebrow">Últimas huellas</p>
-            <h2 id="publications-title">Publicaciones</h2>
+            <h2 id="publications-title">Explorar publicaciones</h2>
+            <p>Encuentra animales perdidos, encontrados y en adopción.</p>
           </div>
           <Link className="button" to="/publications/new">
             Publicar aviso
           </Link>
         </div>
-        <div className="filters">
-          <label>
-            Tipo
-            <select
-              value={params.get('type') ?? ''}
-              onChange={(e) => update('type', e.target.value)}
-            >
-              <option value="">Todos</option>
-              <option value="LOST">Perdidos</option>
-              <option value="FOUND">Encontrados</option>
-              <option value="ADOPTION">Adopción</option>
-            </select>
-          </label>
-          <label>
-            Especie
-            <select
-              value={params.get('species') ?? ''}
-              onChange={(e) => update('species', e.target.value)}
-            >
-              <option value="">Todas</option>
-              <option value="DOG">Perro</option>
-              <option value="CAT">Gato</option>
-              <option value="OTHER">Otra</option>
-            </select>
-          </label>
-          <label>
-            Estado
-            <select
-              value={params.get('status') ?? ''}
-              onChange={(e) => update('status', e.target.value)}
-            >
-              <option value="">Todos</option>
-              <option value="ACTIVE">Activas</option>
-              <option value="RESOLVED">Resueltas</option>
-              <option value="ADOPTED">Adoptadas</option>
-            </select>
-          </label>
-          <label>
-            Orden
-            <select
-              value={nearby ? 'distance' : (params.get('order') ?? 'newest')}
-              onChange={(e) => update('order', e.target.value)}
-              disabled={nearby !== null}
-            >
-              {nearby && <option value="distance">Cercanía</option>}
-              <option value="newest">Más recientes</option>
-              <option value="oldest">Más antiguas</option>
-              <option value="eventDate">Fecha del suceso</option>
-            </select>
-          </label>
-        </div>
-        <div className="nearby-search">
-          {nearby ? (
-            <>
-              <div>
-                <strong>Buscando publicaciones cerca de tu ubicación</strong>
-                <span>Ordenadas por cercanía</span>
-              </div>
-              <label>
-                Radio de búsqueda
-                <select
-                  value={nearby.radiusMeters}
-                  onChange={(event) => {
-                    const radiusMeters = Number(event.target.value)
-                    setNearby({ ...nearby, radiusMeters })
-                    update('page', '1')
-                  }}
+        <div className="explore-toolbar">
+          <div className="filters">
+            <label>
+              Tipo
+              <select
+                value={params.get('type') ?? ''}
+                onChange={(e) => update('type', e.target.value)}
+              >
+                <option value="">Todos</option>
+                <option value="LOST">Perdidos</option>
+                <option value="FOUND">Encontrados</option>
+                <option value="ADOPTION">Adopción</option>
+              </select>
+            </label>
+            <label>
+              Especie
+              <select
+                value={params.get('species') ?? ''}
+                onChange={(e) => update('species', e.target.value)}
+              >
+                <option value="">Todas</option>
+                <option value="DOG">Perro</option>
+                <option value="CAT">Gato</option>
+                <option value="OTHER">Otra</option>
+              </select>
+            </label>
+            <label>
+              Estado
+              <select
+                value={params.get('status') ?? ''}
+                onChange={(e) => update('status', e.target.value)}
+              >
+                <option value="">Todos</option>
+                <option value="ACTIVE">Activas</option>
+                <option value="RESOLVED">Resueltas</option>
+                <option value="ADOPTED">Adoptadas</option>
+              </select>
+            </label>
+            <label>
+              Orden
+              <select
+                value={nearby ? 'distance' : (params.get('order') ?? 'newest')}
+                onChange={(e) => update('order', e.target.value)}
+                disabled={nearby !== null}
+              >
+                {nearby && <option value="distance">Cercanía</option>}
+                <option value="newest">Más recientes</option>
+                <option value="oldest">Más antiguas</option>
+                <option value="eventDate">Fecha del suceso</option>
+              </select>
+            </label>
+          </div>
+          <div className="nearby-search">
+            {nearby ? (
+              <>
+                <div>
+                  <strong>Cerca de mí · {nearby.radiusMeters / 1000} km</strong>
+                  <span>Ordenadas por cercanía</span>
+                </div>
+                <label>
+                  Radio
+                  <select
+                    value={nearby.radiusMeters}
+                    onChange={(event) => {
+                      const radiusMeters = Number(event.target.value)
+                      setNearby({ ...nearby, radiusMeters })
+                      update('page', '1')
+                    }}
+                  >
+                    <option value="5000">5 km</option>
+                    <option value="10000">10 km</option>
+                    <option value="25000">25 km</option>
+                    <option value="50000">50 km</option>
+                    <option value="100000">100 km</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={removeNearby}
                 >
-                  <option value="5000">5 km</option>
-                  <option value="10000">10 km</option>
-                  <option value="25000">25 km</option>
-                  <option value="50000">50 km</option>
-                  <option value="100000">100 km</option>
-                </select>
-              </label>
+                  Desactivar
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                className="secondary"
-                onClick={removeNearby}
+                onClick={searchNearby}
+                disabled={
+                  !navigator.geolocation || geolocationStatus === 'loading'
+                }
               >
-                Quitar búsqueda por cercanía
+                {!navigator.geolocation
+                  ? 'Cercanía no disponible'
+                  : geolocationStatus === 'loading'
+                    ? 'Obteniendo ubicación…'
+                    : 'Cerca de mí'}
               </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={searchNearby}
-              disabled={
-                !navigator.geolocation || geolocationStatus === 'loading'
-              }
-            >
-              {!navigator.geolocation
-                ? 'Búsqueda cercana no disponible'
-                : geolocationStatus === 'loading'
-                  ? 'Obteniendo ubicación…'
-                  : 'Buscar cerca de mí'}
-            </button>
-          )}
+            )}
+          </div>
         </div>
         {geolocationError && (
           <p className="alert" role="alert">
@@ -484,6 +583,26 @@ function Home() {
             </nav>
           </>
         )}
+      </section>
+      <section
+        className="global-map-section"
+        aria-labelledby="global-map-title"
+      >
+        <div className="section-title">
+          <div>
+            <p className="eyebrow">Vista geográfica</p>
+            <h2 id="global-map-title">Mapa de publicaciones</h2>
+          </div>
+        </div>
+        <React.Suspense
+          fallback={
+            <p className="loading" aria-live="polite">
+              Preparando mapa…
+            </p>
+          }
+        >
+          <GlobalMapSection filters={mapFilters} />
+        </React.Suspense>
       </section>
     </>
   )
@@ -719,10 +838,12 @@ function Detail() {
             )}
           </dl>
           {item.publicLocation && (
-            <PublicLocationMap
-              publicLocation={item.publicLocation}
-              type={item.type}
-            />
+            <React.Suspense fallback={<Spinner />}>
+              <PublicLocationMap
+                publicLocation={item.publicLocation}
+                type={item.type}
+              />
+            </React.Suspense>
           )}
           {owner && item.status === 'ACTIVE' && (
             <div className="actions">
@@ -801,6 +922,17 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
     enabled: edit,
     retry: false,
     staleTime: 0,
+  })
+  const statusMutation = useMutation({
+    mutationFn: (target: PublicationStatus) => api.changeStatus(id, target),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ['publication-manage', id] }),
+        client.invalidateQueries({ queryKey: ['publication', id] }),
+        client.invalidateQueries({ queryKey: ['my-publications'] }),
+      ])
+      navigate(`/publications/${id}`)
+    },
   })
   React.useEffect(() => {
     const item = existing.data?.publication
@@ -1000,6 +1132,34 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
         Los campos marcados son obligatorios. El backend volverá a validar todos
         los datos.
       </p>
+      {edit && item?.status === 'ACTIVE' && (
+        <section
+          className="edit-status-panel"
+          aria-labelledby="edit-status-title"
+        >
+          <div>
+            <h2 id="edit-status-title">Estado de la ficha</h2>
+            <p>Actualmente está activa. Puedes finalizarla o archivarla.</p>
+          </div>
+          <div className="actions">
+            {validStatuses(item.type).map((option) => (
+              <button
+                type="button"
+                className="secondary"
+                key={option.value}
+                disabled={statusMutation.isPending}
+                onClick={() =>
+                  window.confirm(`¿Confirmas: ${option.label}?`) &&
+                  statusMutation.mutate(option.value)
+                }
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      <Alert error={statusMutation.error} />
       <form onSubmit={submit}>
         <fieldset>
           <legend>Publicación</legend>
@@ -1054,28 +1214,30 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
             y el backend dejará de conservarla como punto exacto.
           </p>
         )}
-        <LocationPicker
-          mode={
-            publicationType === 'ADOPTION' ? 'reference-zone' : 'exact-owner'
-          }
-          value={selectedLocation}
-          publicZone={edit ? item?.publicLocation : null}
-          privacyText={
-            publicationType === 'LOST'
-              ? 'La ubicación exacta se guarda de forma privada. Los demás usuarios verán una zona aproximada de 1 km.'
-              : publicationType === 'FOUND'
-                ? 'La ubicación exacta se guarda de forma privada. Los demás usuarios verán una zona aproximada de 1,5 km.'
-                : 'No publiques tu domicilio exacto. Selecciona una zona de referencia. Se mostrará una zona aproximada de 5 km.'
-          }
-          onChange={(next) => {
-            locationForm.setValue('location', next, {
-              shouldDirty: true,
-              shouldValidate: true,
-            })
-            setLocationIntent(next ? 'set' : 'remove')
-            setLocationError(undefined)
-          }}
-        />
+        <React.Suspense fallback={<Spinner />}>
+          <LocationPicker
+            mode={
+              publicationType === 'ADOPTION' ? 'reference-zone' : 'exact-owner'
+            }
+            value={selectedLocation}
+            publicZone={edit ? item?.publicLocation : null}
+            privacyText={
+              publicationType === 'LOST'
+                ? 'La ubicación exacta se guarda de forma privada. Los demás usuarios verán una zona aproximada de 1 km.'
+                : publicationType === 'FOUND'
+                  ? 'La ubicación exacta se guarda de forma privada. Los demás usuarios verán una zona aproximada de 1,5 km.'
+                  : 'No publiques tu domicilio exacto. Selecciona una zona de referencia. Se mostrará una zona aproximada de 5 km.'
+            }
+            onChange={(next) => {
+              locationForm.setValue('location', next, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+              setLocationIntent(next ? 'set' : 'remove')
+              setLocationError(undefined)
+            }}
+          />
+        </React.Suspense>
         {locationError && (
           <p className="alert" role="alert">
             {locationError}
@@ -1257,7 +1419,7 @@ function Mine() {
       ) : result.isError ? (
         <Alert error={result.error} />
       ) : (
-        <PublicationGrid items={result.data?.items ?? []} />
+        <PublicationGrid items={result.data?.items ?? []} owner />
       )}
     </section>
   )

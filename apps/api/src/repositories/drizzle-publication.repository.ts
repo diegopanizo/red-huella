@@ -23,6 +23,7 @@ import type {
   CreatePublicationData,
   LocationPersistenceData,
   PublicationListQuery,
+  MapPublicationQuery,
   PublicationRepository,
   UpdatePublicationData,
 } from './contracts/publication.repository.js'
@@ -57,6 +58,20 @@ const manageAggregateSelection = {
   publication: publications,
   animal: animals,
   author: { id: users.id, name: users.name, role: users.role },
+}
+
+const MAP_FETCH_LIMIT = 501
+
+function viewportEnvelope(
+  query: MapPublicationQuery,
+  west: number,
+  east: number,
+) {
+  const envelope = sql`ST_MakeEnvelope(${west}, ${query.south}, ${east}, ${query.north}, 4326)`
+  return and(
+    sql`${publications.publicLocation} && (${envelope})::geography`,
+    sql`ST_Covers(${envelope}, ${publications.publicLocation}::geometry)`,
+  )
 }
 
 function geographicSearch(query: PublicationListQuery) {
@@ -281,6 +296,70 @@ export class DrizzlePublicationRepository implements PublicationRepository {
         })),
         total: totalRow?.value ?? 0,
       }
+    })
+  }
+
+  findForMapViewport(query: MapPublicationQuery) {
+    return runDatabaseOperation(async () => {
+      const spatialFilter =
+        query.west < query.east
+          ? viewportEnvelope(query, query.west, query.east)
+          : sql`(${viewportEnvelope(query, query.west, 180)}) or (${viewportEnvelope(query, -180, query.east)})`
+      const rows = await this.database
+        .select({
+          id: publications.id,
+          type: publications.type,
+          status: publications.status,
+          title: publications.title,
+          eventDate: publications.eventDate,
+          publicLocation: publications.publicLocation,
+          publicLocationRadiusMeters: publications.publicLocationRadiusMeters,
+          animalName: animals.name,
+          species: animals.species,
+          breed: animals.breed,
+          thumbnailId: publicationImages.id,
+          thumbnailWidth: publicationImages.thumbnailWidth,
+          thumbnailHeight: publicationImages.thumbnailHeight,
+        })
+        .from(publications)
+        .innerJoin(animals, eq(publications.animalId, animals.id))
+        .leftJoin(
+          publicationImages,
+          and(
+            eq(publicationImages.publicationId, publications.id),
+            eq(publicationImages.position, 0),
+          ),
+        )
+        .where(
+          and(
+            eq(publications.status, query.status),
+            isNotNull(publications.publicLocation),
+            isNotNull(publications.publicLocationRadiusMeters),
+            ...(query.type ? [eq(publications.type, query.type)] : []),
+            ...(query.species ? [eq(animals.species, query.species)] : []),
+            spatialFilter,
+          ),
+        )
+        .orderBy(desc(publications.createdAt), desc(publications.id))
+        .limit(MAP_FETCH_LIMIT)
+
+      return rows.flatMap((row) =>
+        row.publicLocation === null ||
+        row.publicLocationRadiusMeters === null ||
+        row.status === 'ARCHIVED'
+          ? []
+          : [
+              {
+                ...row,
+                status: row.status,
+                publicLocation: {
+                  ...row.publicLocation,
+                  radiusMeters: row.publicLocationRadiusMeters,
+                },
+                publicLocationRadiusMeters: row.publicLocationRadiusMeters,
+              },
+            ],
+      )
     })
   }
 

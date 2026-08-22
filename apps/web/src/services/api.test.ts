@@ -4,6 +4,45 @@ import { api } from './api'
 
 afterEach(() => vi.unstubAllGlobals())
 
+describe('API del mapa global', () => {
+  it('serializa exclusivamente bounds y filtros permitidos', async () => {
+    const body = { publications: [], truncated: false, limit: 500 }
+    const fetchMock = vi.fn<
+      (input: RequestInfo | URL, options?: RequestInit) => Promise<Response>
+    >((input, options) => {
+      void input
+      void options
+      return Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      api.getMapPublications(
+        { north: 44.5, south: 27.5, west: -18.5, east: 5 },
+        { type: 'LOST', species: 'DOG', status: 'RESOLVED' },
+      ),
+    ).resolves.toEqual(body)
+
+    const requested = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    expect(Object.fromEntries(requested.searchParams)).toEqual({
+      north: '44.5',
+      south: '27.5',
+      west: '-18.5',
+      east: '5',
+      type: 'LOST',
+      species: 'DOG',
+      status: 'RESOLVED',
+    })
+    for (const forbidden of ['limit', 'page', 'pageSize', 'order', 'radius'])
+      expect(requested.searchParams.has(forbidden)).toBe(false)
+  })
+})
+
 describe('API de imágenes', () => {
   it('envía FormData con credentials sin establecer Content-Type', async () => {
     const fetchMock = vi.fn<

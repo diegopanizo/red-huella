@@ -4,8 +4,18 @@ import type {
   PublicationList,
   ManagePublication,
   PublicationContactSettings,
+  MapBounds,
+  MapPublicationsResponse,
+  PublicationStatus,
+  PublicationType,
   User,
 } from '../types'
+
+export interface MapPublicationFilters {
+  type?: PublicationType | undefined
+  species?: 'DOG' | 'CAT' | 'OTHER' | undefined
+  status?: Exclude<PublicationStatus, 'ARCHIVED'> | undefined
+}
 
 const apiUrl =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ??
@@ -77,6 +87,25 @@ export const api = {
   logout: () => requestJson<void>('/auth/logout', { method: 'POST' }),
   publications: (query: string) =>
     requestJson<PublicationList>(`/publications?${query}`),
+  getMapPublications: (
+    bounds: MapBounds,
+    filters: MapPublicationFilters = {},
+    signal?: AbortSignal,
+  ) => {
+    const query = new URLSearchParams({
+      north: String(bounds.north),
+      south: String(bounds.south),
+      west: String(bounds.west),
+      east: String(bounds.east),
+    })
+    if (filters.type) query.set('type', filters.type)
+    if (filters.species) query.set('species', filters.species)
+    if (filters.status) query.set('status', filters.status)
+    return requestJson<MapPublicationsResponse>(
+      `/publications/map?${query.toString()}`,
+      signal ? { signal } : {},
+    )
+  },
   mine: () => requestJson<PublicationList>('/publications/mine?pageSize=100'),
   publication: (id: string) =>
     requestJson<{ publication: Publication }>(`/publications/${id}`),

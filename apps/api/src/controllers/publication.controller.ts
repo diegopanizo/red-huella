@@ -4,6 +4,7 @@ import {
   createPublicationSchema,
   changePublicationStatusSchema,
   listPublicationsSchema,
+  mapPublicationsSchema,
   publicationIdSchema,
   updatePublicationSchema,
 } from '../publications/schemas.js'
@@ -14,6 +15,7 @@ import type {
   CreatePublicationService,
   GetPublicationService,
   ListPublicationsService,
+  ListMapPublicationsService,
   ManagePublicationService,
   UpdatePublicationService,
 } from '../services/publication.services.js'
@@ -31,6 +33,7 @@ export class PublicationController {
     private readonly createPublication: CreatePublicationService,
     private readonly getPublication: GetPublicationService,
     private readonly listPublications: ListPublicationsService,
+    private readonly listMapPublications: ListMapPublicationsService,
     private readonly managePublication: ManagePublicationService,
     private readonly updatePublication: UpdatePublicationService,
     private readonly changeStatus: ChangePublicationStatusService,
@@ -67,6 +70,19 @@ export class PublicationController {
           parseOrThrow(listPublicationsSchema.safeParse(request.query)),
         ),
       )
+    } catch (error: unknown) {
+      next(error)
+    }
+  }
+  map: RequestHandler = async (request, response, next) => {
+    try {
+      response
+        .set('Cache-Control', 'public, no-cache, max-age=0, must-revalidate')
+        .json(
+          await this.listMapPublications.execute(
+            parseOrThrow(mapPublicationsSchema.safeParse(request.query)),
+          ),
+        )
     } catch (error: unknown) {
       next(error)
     }

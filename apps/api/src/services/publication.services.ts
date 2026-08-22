@@ -23,6 +23,10 @@ import type {
   UpdatePublicationData,
 } from '../repositories/contracts/publication.repository.js'
 import { LocationPrivacyService } from '../locations/location-privacy-policy.js'
+import { toMapPublicationDto } from '../publications/map-dto.js'
+import type { MapPublicationQuery } from '../repositories/contracts/publication.repository.js'
+
+export const MAP_PUBLICATION_LIMIT = 500
 
 function locationPersistence(
   policy: ReturnType<LocationPrivacyService['apply']>,
@@ -146,6 +150,26 @@ export class ListPublicationsService {
         total: result.total,
         totalPages: Math.ceil(result.total / query.pageSize),
       },
+    }
+  }
+}
+
+export class ListMapPublicationsService {
+  constructor(
+    private readonly publications: Pick<
+      PublicationRepository,
+      'findForMapViewport'
+    >,
+  ) {}
+
+  async execute(query: MapPublicationQuery) {
+    const rows = await this.publications.findForMapViewport(query)
+    return {
+      publications: rows
+        .slice(0, MAP_PUBLICATION_LIMIT)
+        .map(toMapPublicationDto),
+      truncated: rows.length > MAP_PUBLICATION_LIMIT,
+      limit: MAP_PUBLICATION_LIMIT,
     }
   }
 }

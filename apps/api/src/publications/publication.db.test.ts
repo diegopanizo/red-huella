@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
 import { count, eq } from 'drizzle-orm'
@@ -486,6 +487,202 @@ describe('publication HTTP API with PostgreSQL', () => {
     ])
       expect(
         (await request(app).get('/api/v1/publications').query(query)).status,
+      ).toBe(400)
+  })
+
+  it('serves the minimal map viewport DTO from public_location, including antimeridian and thumbnail', async () => {
+    const user = await users.create({
+      name: 'Map Owner',
+      email: 'map-owner@example.test',
+    })
+    const createMapPublication = async (input: {
+      title: string
+      publicPoint: { latitude: number; longitude: number }
+      exactPoint: { latitude: number; longitude: number }
+      species?: 'DOG' | 'CAT'
+      status?: 'ACTIVE' | 'RESOLVED' | 'ADOPTED' | 'ARCHIVED'
+    }) => {
+      const created = await publications.createWithAnimal(
+        {
+          userId: user.id,
+          type: input.status === 'ADOPTED' ? 'ADOPTION' : 'LOST',
+          title: input.title,
+          description: 'No debe aparecer en el mapa',
+          eventDate: new Date('2026-08-20T10:00:00Z'),
+          exactLocation: input.exactPoint,
+          publicLocation: { ...input.publicPoint, radiusMeters: 1_000 },
+          locationPrivacyVersion: 1,
+          status: input.status ?? 'ACTIVE',
+        },
+        { name: 'Luna', species: input.species ?? 'DOG', breed: 'Mestizo' },
+      )
+      return created
+    }
+
+    const publicInside = await createMapPublication({
+      title: 'PÃºblica dentro, exacta fuera',
+      publicPoint: { latitude: 40.4, longitude: -3.7 },
+      exactPoint: { latitude: 10, longitude: 10 },
+    })
+    const exactInside = await createMapPublication({
+      title: 'Exacta dentro, pÃºblica fuera',
+      publicPoint: { latitude: 20, longitude: 20 },
+      exactPoint: { latitude: 40.4, longitude: -3.7 },
+    })
+    const eastern = await createMapPublication({
+      title: 'Este del antimeridiano',
+      publicPoint: { latitude: 0, longitude: 179.5 },
+      exactPoint: { latitude: 0, longitude: 0 },
+    })
+    const western = await createMapPublication({
+      title: 'Oeste del antimeridiano',
+      publicPoint: { latitude: 0, longitude: -179.5 },
+      exactPoint: { latitude: 0, longitude: 0 },
+    })
+    await createMapPublication({
+      title: 'Archivada',
+      publicPoint: { latitude: 40.41, longitude: -3.71 },
+      exactPoint: { latitude: 40.41, longitude: -3.71 },
+      status: 'ARCHIVED',
+    })
+    const resolved = await createMapPublication({
+      title: 'Resuelta visible bajo filtro',
+      publicPoint: { latitude: 40.5, longitude: -3.5 },
+      exactPoint: { latitude: 0, longitude: 0 },
+      status: 'RESOLVED',
+    })
+    const adopted = await createMapPublication({
+      title: 'Adoptada visible bajo filtro',
+      publicPoint: { latitude: 40.6, longitude: -3.6 },
+      exactPoint: { latitude: 0, longitude: 0 },
+      species: 'CAT',
+      status: 'ADOPTED',
+    })
+    const withoutPublic = await publications.createWithAnimal(
+      {
+        userId: user.id,
+        type: 'LOST',
+        title: 'Sin ubicación pública',
+        eventDate: new Date('2026-08-20T10:00:00Z'),
+        exactLocation: { latitude: 40.4, longitude: -3.7 },
+      },
+      { species: 'DOG' },
+    )
+    const thumbnailId = randomUUID()
+    await database.insert(schema.publicationImages).values({
+      id: thumbnailId,
+      publicationId: publicInside.publication.id,
+      storageKey: `publications/${publicInside.publication.id}/display.webp`,
+      thumbnailStorageKey: `publications/${publicInside.publication.id}/thumbnail.webp`,
+      mimeType: 'image/webp',
+      displayWidth: 1_024,
+      displayHeight: 768,
+      displayByteSize: 100,
+      displayChecksumSha256: 'a'.repeat(64),
+      thumbnailWidth: 640,
+      thumbnailHeight: 480,
+      thumbnailByteSize: 50,
+      thumbnailChecksumSha256: 'b'.repeat(64),
+      position: 0,
+    })
+
+    const response = await request(app).get('/api/v1/publications/map').query({
+      north: 41,
+      south: 40,
+      west: -4,
+      east: -3,
+      type: 'LOST',
+      species: 'DOG',
+    })
+    expect(response.status).toBe(200)
+    expect(response.headers['cache-control']).toBe(
+      'public, no-cache, max-age=0, must-revalidate',
+    )
+    expect(response.headers.etag).toEqual(expect.any(String))
+    expect(response.body).toMatchObject({ truncated: false, limit: 500 })
+    expect(response.body.publications).toHaveLength(1)
+    expect(response.body.publications[0]).toEqual({
+      id: publicInside.publication.id,
+      type: 'LOST',
+      status: 'ACTIVE',
+      title: 'PÃºblica dentro, exacta fuera',
+      eventDate: '2026-08-20T10:00:00.000Z',
+      publicLocation: { lat: 40.4, long: -3.7, radius: 1_000 },
+      animal: { name: 'Luna', species: 'DOG', breed: 'Mestizo' },
+      thumbnail: {
+        url: `/api/v1/publication-images/${thumbnailId}/thumbnail`,
+        width: 640,
+        height: 480,
+      },
+    })
+    const serialized = JSON.stringify(response.body)
+    for (const forbidden of [
+      exactInside.publication.id,
+      withoutPublic.publication.id,
+      'description',
+      'author',
+      'userId',
+      'exactLocation',
+      'storageKey',
+      'contact',
+      'sex',
+    ])
+      expect(serialized).not.toContain(forbidden)
+
+    const inclusiveBoundary = await request(app)
+      .get('/api/v1/publications/map')
+      .query({ north: 40.4, south: 40, west: -3.7, east: -3 })
+    expect(inclusiveBoundary.body.publications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: publicInside.publication.id }),
+      ]),
+    )
+
+    const antimeridian = await request(app)
+      .get('/api/v1/publications/map')
+      .query({ north: 1, south: -1, west: 170, east: -170 })
+    expect(
+      antimeridian.body.publications.map((item: { id: string }) => item.id),
+    ).toEqual(
+      expect.arrayContaining([eastern.publication.id, western.publication.id]),
+    )
+
+    const resolvedResponse = await request(app)
+      .get('/api/v1/publications/map')
+      .query({ north: 41, south: 40, west: -4, east: -3, status: 'RESOLVED' })
+    expect(resolvedResponse.body.publications).toEqual([
+      expect.objectContaining({
+        id: resolved.publication.id,
+        status: 'RESOLVED',
+      }),
+    ])
+    const adoptedResponse = await request(app)
+      .get('/api/v1/publications/map')
+      .query({
+        north: 41,
+        south: 40,
+        west: -4,
+        east: -3,
+        status: 'ADOPTED',
+        type: 'ADOPTION',
+        species: 'CAT',
+      })
+    expect(adoptedResponse.body.publications).toEqual([
+      expect.objectContaining({
+        id: adopted.publication.id,
+        status: 'ADOPTED',
+      }),
+    ])
+
+    for (const query of [
+      { north: 41, south: 40, west: -4 },
+      { north: 41, south: 40, west: -4, east: -3, status: 'ARCHIVED' },
+      { north: 41, south: 40, west: -4, east: -3, page: 1 },
+      { north: 41, south: 40, west: -4, east: -3, latitude: 40.4 },
+    ])
+      expect(
+        (await request(app).get('/api/v1/publications/map').query(query))
+          .status,
       ).toBe(400)
   })
 

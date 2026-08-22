@@ -43,6 +43,11 @@ vi.mock('./features/locations/PublicLocationMap', () => ({
     </div>
   ),
 }))
+vi.mock('./features/locations/GlobalMapSection', () => ({
+  GlobalMapSection: () => (
+    <div data-testid="global-map-section">Mapa global</div>
+  ),
+}))
 
 const publication = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -135,11 +140,34 @@ describe('frontend funcional', () => {
     )
     renderApp()
     expect(screen.getAllByText('Cargando…').length).toBeGreaterThan(0)
+    expect(screen.getByText('Preparando mapa…')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'Ayudamos a que cada huella vuelva a casa.',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Explorar publicaciones' }),
+    ).toHaveAttribute('href', '#publications-title')
+    expect(
+      screen.getByRole('link', { name: 'Publicar un aviso' }),
+    ).toHaveAttribute('href', '/publications/new')
     expect(await screen.findByRole('link', { name: 'Rocky' })).toHaveAttribute(
       'href',
       `/publications/${publication.id}`,
     )
+    expect(screen.getByRole('link', { name: 'Ver ficha' })).toHaveAttribute(
+      'href',
+      `/publications/${publication.id}`,
+    )
     expect(screen.getByLabelText('Imagen no disponible')).toBeInTheDocument()
+    expect(
+      screen.getByLabelText('Imagen destacada no disponible'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Privacidad desde el diseño'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Comunidad y cuidado')).not.toBeInTheDocument()
     expect(screen.getByText('Perdido')).toBeInTheDocument()
     expect(screen.getByText('Perdido · Perro')).toBeInTheDocument()
     expect(screen.queryByText(/Border Collie/)).not.toBeInTheDocument()
@@ -151,6 +179,40 @@ describe('frontend funcional', () => {
       target: { value: 'LOST' },
     })
     await waitFor(() => expect(window.location.search).toContain('type=LOST'))
+  })
+
+  it('ofrece acciones explícitas de detalle y edición en Mis publicaciones', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/auth/me'))
+          return json({
+            user: {
+              id: publication.author.id,
+              name: 'Diego',
+              email: 'diego@example.test',
+              role: 'USER',
+            },
+          })
+        if (url.includes('/publications/mine'))
+          return json({
+            items: [publication],
+            pagination: { page: 1, pageSize: 100, total: 1, totalPages: 1 },
+          })
+        return json({}, 404)
+      }),
+    )
+
+    renderApp('/my-publications')
+
+    expect(
+      await screen.findByRole('link', { name: 'Ver ficha' }),
+    ).toHaveAttribute('href', `/publications/${publication.id}`)
+    expect(screen.getByRole('link', { name: 'Editar ficha' })).toHaveAttribute(
+      'href',
+      `/publications/${publication.id}/edit`,
+    )
   })
 
   it('resume raza, sexo y geografía pública sin mostrar coordenadas', async () => {
@@ -209,7 +271,7 @@ describe('frontend funcional', () => {
     renderApp()
     await screen.findByRole('link', { name: 'Rocky' })
     expect(getCurrentPosition).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Buscar cerca de mí' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cerca de mí' }))
     expect(getCurrentPosition).toHaveBeenCalledOnce()
     const [success, , options] = getCurrentPosition.mock.calls[0]!
     expect(options).toMatchObject({
@@ -239,7 +301,7 @@ describe('frontend funcional', () => {
         ),
       ).toBe(true),
     )
-    fireEvent.change(screen.getByLabelText('Radio de búsqueda'), {
+    fireEvent.change(screen.getByLabelText('Radio'), {
       target: { value: '5000' },
     })
     await waitFor(() =>
@@ -251,9 +313,7 @@ describe('frontend funcional', () => {
       ).toBe(true),
     )
     expect(getCurrentPosition).toHaveBeenCalledOnce()
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Quitar búsqueda por cercanía' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Desactivar' }))
     await waitFor(() => {
       const last = requestedUrls.at(-1) ?? ''
       expect(last).toContain('species=DOG')
@@ -287,9 +347,7 @@ describe('frontend funcional', () => {
       )
       renderApp()
       await screen.findByRole('link', { name: 'Rocky' })
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Buscar cerca de mí' }),
-      )
+      fireEvent.click(screen.getByRole('button', { name: 'Cerca de mí' }))
       getCurrentPosition.mock.calls[0]![1]({ code })
       expect(await screen.findByRole('alert')).toHaveTextContent(message)
       expect(screen.getByRole('link', { name: 'Rocky' })).toBeInTheDocument()
@@ -311,7 +369,7 @@ describe('frontend funcional', () => {
     renderApp()
     await screen.findByRole('link', { name: 'Rocky' })
     expect(
-      screen.getByRole('button', { name: 'Búsqueda cercana no disponible' }),
+      screen.getByRole('button', { name: 'Cercanía no disponible' }),
     ).toBeDisabled()
   })
 
@@ -410,6 +468,10 @@ describe('frontend funcional', () => {
       'http://localhost:3000/api/v1/publication-images/image-id/thumbnail',
     )
     expect(image).toHaveAttribute('loading', 'lazy')
+    expect(screen.getByAltText('Imagen destacada de Rocky')).toHaveAttribute(
+      'src',
+      'http://localhost:3000/api/v1/publication-images/image-id/thumbnail',
+    )
     expect(
       screen.queryByLabelText('Imagen no disponible'),
     ).not.toBeInTheDocument()
@@ -843,6 +905,13 @@ describe('frontend funcional', () => {
       renderApp(`/publications/${publication.id}/edit`)
       expect(
         await screen.findByText(/41.100000, -4.200000/),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/Actualmente está activa/)).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Marcar resuelto' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Archivar' }),
       ).toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
       await waitFor(() => expect(patchBody).toBeDefined())

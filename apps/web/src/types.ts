@@ -62,3 +62,29 @@ export type PublicationList = {
     totalPages: number
   }
 }
+
+export type MapBounds = {
+  north: number
+  south: number
+  west: number
+  east: number
+}
+export type MapPublication = {
+  id: string
+  type: PublicationType
+  status: Exclude<PublicationStatus, 'ARCHIVED'>
+  title: string
+  eventDate: string
+  publicLocation: { lat: number; long: number; radius: number }
+  animal: {
+    name: string | null
+    species: 'DOG' | 'CAT' | 'OTHER'
+    breed: string | null
+  }
+  thumbnail: { url: string; width: number; height: number } | null
+}
+export type MapPublicationsResponse = {
+  publications: MapPublication[]
+  truncated: boolean
+  limit: 500
+}

@@ -28,6 +28,8 @@ El frontend owner encapsula WhatsApp, teléfono y email en `ContactSettingsField
 
 `AuthProvider` mantiene una única query `['auth','me']`. React Router separa rutas públicas y protegidas; estas últimas redirigen a login solo como UX. Los formularios auth usan React Hook Form/Zod y los formularios de publicación construyen allowlists explícitas. CSS propio responsive evita acoplamiento a un framework visual.
 
+El sistema visual del frontend se apoya en tokens CSS semánticos de color, espaciado y radios, sin dependencia de componentes externa. Explorar tiene una composición editorial y un contenedor amplio propio; las vistas de lectura y formulario conservan una medida menor. Header, toolbar, cards y mapas reutilizan la misma jerarquía primary/secondary, superficies sobrias y motion reducido, respetando `prefers-reduced-motion`. Estos cambios son exclusivamente de presentación: navegación, queries, autorización y reglas de negocio permanecen en sus capas existentes.
+
 ## Flujo de publicaciones
 
 `Authenticated Request → Controller/Zod → CreatePublicationService → Drizzle transaction → Animal + Publication → PostgreSQL`.
@@ -43,6 +45,16 @@ El flujo de escritura es `DTO validado → LocationPrivacyService → Repository
 Los aggregates de detalle/listado usan una selección allowlist que no lee `exact_location` ni la pareja legacy; proyectan esos campos internos como `NULL`. `findById` conserva la lectura completa exclusivamente para casos internos. Esta separación evita que una futura omisión del DTO sea la única barrera frente a la ubicación exacta.
 
 El listado construye una sola colección de filtros reutilizada en datos y count. Con centro geográfico añade `ST_DWithin(public_location, search_point, radius)` y calcula `ST_Distance` sobre los mismos geography; `order=distance` estabiliza con `created_at DESC, id DESC`. El endpoint owner `/publications/:id/manage` usa una selección interna separada, exige sesión/ownership y nunca altera el contrato público según cookie.
+
+El mapa global usa un flujo independiente `route /map → controller → ListMapPublicationsService → findForMapViewport`. El repository proyecta solo el DTO necesario y hace un `LEFT JOIN` acotado a la imagen principal, sin count ni N+1. El viewport se resuelve con `public_location && envelope::geography` y `ST_Covers(envelope, public_location::geometry)`; el antimeridiano produce dos ramas OR indexables. Lee 501, el service recorta a 500 y expone `truncated`. Ninguna capa consulta `exact_location`.
+
+En frontend, `GlobalMapSection` coordina TanStack Query, estados de carga/error/truncado, mini lista y selección; `GlobalPublicationsMap` se limita a Leaflet e interacción visual. `appliedBounds` identifica siempre el dataset visible y forma parte de la query key; `pendingBounds` recibe únicamente `moveend`/`zoomend` y nunca dispara red. Una comparación pura con epsilon `1e-5` activa «Buscar en esta zona» solo ante cambio material. El click copia pending a applied y provoca una consulta explícita; cambiar tipo, especie o estado consulta inmediatamente con los applied actuales, sin adoptar un viewport pendiente.
+
+Explorar usa un contenedor propio de hasta `1520px`, sin ensanchar las vistas de creación, edición o detalle. La sección cartográfica reparte de forma fluida mini lista y mapa, comparte su altura en escritorio y apila ambas regiones por debajo de `800px`. Los límites visuales del thumbnail y del popup pertenecen a clases específicas del mapa global para no afectar `LocationPicker` ni `PublicLocationMap`.
+
+TanStack Query entrega su `AbortSignal` al `fetch` del mapa. Cambiar de bounds cancela la observación anterior y una respuesta tardía no puede sustituir el dataset de la key vigente. `lastSuccessfulData` mantiene mapa/lista ante 429 o error y deja claro que pertenecen a la última zona cargada. Al completar una query se conserva la selección solo si su ID sigue presente. El centrado por card marca el movimiento Leaflet como programático hasta `moveend`, por lo que no crea una CTA falsa ni hace `fitBounds` después de consultar.
+
+Los componentes cartográficos se cargan con `React.lazy` y `Suspense`. `GlobalMapSection`, `LocationPicker` y `PublicLocationMap` generan chunks separados y Vite extrae React-Leaflet/Leaflet a chunks cartográficos compartidos; el CSS oficial permanece global. Create/edit/detail conservan sus contratos y muestran fallback mientras se descarga su mapa.
 
 El Bloque 4 añade `LocationPicker` como adaptador controlado y reusable sobre React-Leaflet. Su valor `Location | null` es la fuente de verdad compartida por mapa, marcador, geolocalización y fallback manual. El modo obligatorio `exact-owner | reference-zone` hace explícito el contexto de privacidad. La edición obtiene `exactLocation` solo desde `/manage`; `publicLocation` se pasa al mapa exclusivamente como círculo de referencia. Los assets del marcador se importan desde el paquete Leaflet para que Vite los incluya, sin CDN adicional.
 

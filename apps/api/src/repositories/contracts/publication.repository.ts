@@ -40,6 +40,9 @@ export interface PublicationRepository {
   findMany(
     query: PublicationListQuery,
   ): Promise<{ items: PublicationAggregate[]; total: number }>
+  findForMapViewport(
+    query: MapPublicationQuery,
+  ): Promise<MapPublicationRecord[]>
   updateWithAnimal(
     id: string,
     publication: UpdatePublicationData,
@@ -59,6 +62,32 @@ export interface PublicationRepository {
     id: string,
     location: LocationPersistenceData,
   ): Promise<void>
+}
+
+export interface MapPublicationQuery {
+  north: number
+  south: number
+  west: number
+  east: number
+  type?: PublicationType | undefined
+  status: Exclude<PublicationStatus, 'ARCHIVED'>
+  species?: Species | undefined
+}
+
+export interface MapPublicationRecord {
+  id: string
+  type: PublicationType
+  status: Exclude<PublicationStatus, 'ARCHIVED'>
+  title: string
+  eventDate: Date
+  publicLocation: PublicLocation
+  publicLocationRadiusMeters: number
+  animalName: string | null
+  species: Species
+  breed: string | null
+  thumbnailId: string | null
+  thumbnailWidth: number | null
+  thumbnailHeight: number | null
 }
 
 export interface PublicationAggregate {

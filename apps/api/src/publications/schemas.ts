@@ -27,6 +27,15 @@ const locationSchema = z
   })
   .strict()
 
+const mapCoordinate = (minimum: number, maximum: number) =>
+  z.preprocess(
+    (value) =>
+      typeof value === 'string' && value.trim().length > 0
+        ? Number(value)
+        : value,
+    z.number().finite().min(minimum).max(maximum),
+  )
+
 export const animalInputSchema = z
   .object({
     name: optionalTrimmed(120),
@@ -116,5 +125,29 @@ export const listPublicationsSchema = z
       context.addIssue({
         code: 'custom',
         message: 'order=distance requiere un centro de búsqueda y radio',
+      })
+  })
+
+export const mapPublicationsSchema = z
+  .object({
+    north: mapCoordinate(-85.05112878, 85.05112878),
+    south: mapCoordinate(-85.05112878, 85.05112878),
+    west: mapCoordinate(-180, 180),
+    east: mapCoordinate(-180, 180),
+    type: z.enum(publicationTypeValues).optional(),
+    species: z.enum(speciesValues).optional(),
+    status: z.enum(['ACTIVE', 'RESOLVED', 'ADOPTED']).default('ACTIVE'),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.north <= value.south)
+      context.addIssue({
+        code: 'custom',
+        message: 'north debe ser mayor que south',
+      })
+    if (value.west === value.east)
+      context.addIssue({
+        code: 'custom',
+        message: 'west y east deben ser distintos',
       })
   })

@@ -6,6 +6,7 @@
 | ------ | ------------------------------------------- | --------------- | ---------------------------------------------- |
 | POST   | `/api/v1/publications`                      | sesión + Origin | Crea animal y publicación atómicamente; `201`  |
 | GET    | `/api/v1/publications`                      | público         | Lista paginada y filtrada                      |
+| GET    | `/api/v1/publications/map`                  | público         | Publicaciones mínimas del viewport             |
 | GET    | `/api/v1/publications/mine`                 | sesión          | Lista todas las publicaciones propias          |
 | GET    | `/api/v1/publications/:id/manage`           | owner           | Datos editables con ubicación exacta privada   |
 | GET    | `/api/v1/publications/:id/contact-settings` | owner           | Lee contacto configurado; cualquier estado     |
@@ -24,6 +25,35 @@ El DTO público contiene `publicLocation {latitude,longitude,radiusMeters}` o `n
 El PATCH permite cambiar `type`. La política se reaplica al tipo final dentro de la actualización atómica. LOST/FOUND → ADOPTION elimina exacta; ADOPTION → LOST/FOUND requiere una nueva ubicación si se omite `location`, aunque `location: null` permite expresar deliberadamente una publicación sin ubicación.
 
 El cliente web tipa `publicLocation` como `{ latitude, longitude, radiusMeters }` y el resultado owner como el DTO público más `exactLocation: { latitude, longitude } | null`. En PATCH omite `location` si no cambió, envía el punto solo al modificarlo y envía `null` al quitarlo.
+
+### Mapa global: backend implementado
+
+`GET /api/v1/publications/map` exige exactamente `north`, `south`, `west`, `east`; acepta opcionalmente `type`, `species` y `status`. Las latitudes están limitadas a ±85.05112878, longitudes a ±180, `north > south` y `west != east`. `west > east` representa cruce del antimeridiano. El estado por defecto es `ACTIVE`; solo se aceptan además `RESOLVED` y `ADOPTED`. Parámetros desconocidos, incluida cualquier paginación, zoom o búsqueda radial, producen 400.
+
+```json
+{
+  "publications": [
+    {
+      "id": "uuid",
+      "type": "LOST",
+      "status": "ACTIVE",
+      "title": "Luna perdida",
+      "eventDate": "2026-08-20T10:00:00.000Z",
+      "publicLocation": { "lat": 40.4, "long": -3.7, "radius": 1000 },
+      "animal": { "name": "Luna", "species": "DOG", "breed": "Mestizo" },
+      "thumbnail": {
+        "url": "/api/v1/publication-images/uuid/thumbnail",
+        "width": 640,
+        "height": 480
+      }
+    }
+  ],
+  "truncated": false,
+  "limit": 500
+}
+```
+
+El repository obtiene hasta 501 filas, ordenadas por creación e id descendentes; no hace count. La respuesta recorta a 500 y marca `truncated`. Solo usa `public_location`, omite filas sin ella y une exclusivamente la imagen `position=0`. Responde `Cache-Control: public, no-cache, max-age=0, must-revalidate`, ETag y 60 peticiones/minuto/IP; el exceso produce `429 MAP_RATE_LIMITED`.
 
 ### Configuración owner de contacto
 

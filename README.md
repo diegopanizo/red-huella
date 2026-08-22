@@ -22,7 +22,7 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 **En desarrollo — Milestone 9 completado (contacto entre usuarios).**
 
-La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía, mapas aproximados y contacto autenticado por publicación mediante WhatsApp, teléfono o email. No implementa chat interno ni notificaciones. La API Express usa PostgreSQL 17 + PostGIS, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
+La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía, mapas aproximados, una primera interfaz global de mapa por viewport y contacto autenticado por publicación mediante WhatsApp, teléfono o email. Clustering y refresco interactivo por nueva zona aún están pendientes; no existen chat interno ni notificaciones. La API Express usa PostgreSQL 17 + PostGIS, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
 
 ## Stack tecnológico
 

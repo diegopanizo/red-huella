@@ -52,35 +52,43 @@ Contacto voluntario por publicación mediante WhatsApp, teléfono y email, aisla
 
 > Cambio de orden aprobado al iniciar el Milestone 9: este número estaba reservado anteriormente a Favoritos. Contacto se prioriza para completar el ciclo de una publicación; Favoritos y los milestones futuros se desplazan una posición sin afirmar que hayan sido implementados.
 
-## Milestone 10 — Favoritos
+## Milestone 10 — Mapa global de publicaciones (en curso)
+
+El Bloque 1 implementa el contrato público y backend de consulta por viewport, con privacidad espacial, antimeridiano, límite y rate limiting. El Bloque 2 añade en Explorar un mapa Leaflet básico con mini lista, marcadores aproximados, popup, filtros compartidos y carga diferida. El Bloque 3 implementa viewport pending/applied, «Buscar en esta zona», cancelación de respuestas obsoletas y conservación ante errores; su pulido 3.1 amplía y equilibra el layout responsive sin alterar ese comportamiento. Clustering, integración con Cerca de mí y experiencia móvil final permanecen pendientes.
+
+El refinamiento visual transversal iniciado en 2026 define tokens, jerarquía de acciones y una presentación editorial responsive para header, hero, filtros, cards y mapa. Es una mejora de UX sobre funcionalidades existentes y no cierra el milestone ni incorpora clustering o búsqueda visual.
+
+> Cambio de orden aprobado al iniciar el Milestone 10: este número estaba reservado anteriormente a Favoritos. El mapa global se prioriza como continuación de la base PostGIS; Favoritos y los milestones posteriores se desplazan sin afirmar que hayan sido implementados.
+
+## Milestone 11 — Favoritos
 
 Persistencia, API y UI de favoritos con autorización.
 
-## Milestone 11 — Roles y moderación
+## Milestone 12 — Roles y moderación
 
 Protectoras, reportes, roles y operaciones administrativas auditables.
 
-## Milestone 12 — Matching tradicional
+## Milestone 13 — Matching tradicional
 
 Servicio independiente, score explicable con especie, raza, color, tamaño, sexo, distancia y fecha, más evaluación y tests.
 
-## Milestone 13 — Testing E2E
+## Milestone 14 — Testing E2E
 
 Playwright, datos aislados y recorridos críticos automatizados.
 
-## Milestone 14 — Auditoría de seguridad
+## Milestone 15 — Auditoría de seguridad
 
 Threat model actualizado, revisión OWASP, dependencias, permisos, configuración y pruebas de abuso.
 
-## Milestone 15 — Matching visual
+## Milestone 16 — Matching visual
 
 Evaluación ética/técnica, proveedor de embeddings desacoplado, pgvector, métricas y comunicación de incertidumbre.
 
-## Milestone 16 — Deployment
+## Milestone 17 — Deployment
 
 Infraestructura, dominio, HTTPS, migraciones, backups, observabilidad y runbook.
 
-## Milestone 17 — Preparación final TFM
+## Milestone 18 — Preparación final TFM
 
 - README definitivo y capturas.
 - Slides y URL pública.

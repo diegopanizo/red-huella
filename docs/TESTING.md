@@ -88,6 +88,12 @@ Checklist manual del Bloque 5:
 
 El Bloque 3 cubre redondeo público, validación completa de query, create por tipo, campos protegidos, estabilidad/regeneración, retirada y transiciones de tipo. Supertest/PostGIS verifica `/manage`, auth/ownership/cache, radio y orden estable, filtros combinados, null/archived, distancia redondeada y un dataset con exacta/pública deliberadamente separadas. La suite DB comprueba fronteras `ST_DWithin`, distancia en metros y existencia de GiST sin imponer un plan frágil sobre pocas filas.
 
+Milestone 10 Bloque 1 añade unitarios del schema estricto, DTO allowlist, thumbnail, cap 500+1 y rate limiter. Supertest/PostGIS cubre acceso anónimo, contrato/cache/ETag, filtros, bounds inválidos, antimeridiano y la regresión de privacidad exacta/pública. La revisión del plan usa `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` sobre un viewport representativo; con pocas filas se fuerza `enable_seqscan=off` solo durante el diagnóstico para confirmar que el predicado `&&` puede usar `publications_public_location_gist_idx`, sin convertir el plan exacto del optimizador en un test frágil.
+
+El Bloque 2 prueba la serialización exclusiva de bounds/filtros y el contrato de respuesta; markers, popup, enlaces, fallback de imagen, selección lista↔mapa, leyenda y ausencia textual de datos privados; además de loading, error general, 429, truncado y refetch por filtros. React-Leaflet se sustituye por dobles observables en JSDOM. La separación lazy se valida en el build, no acoplando unit tests a nombres hash de chunks.
+
+El Bloque 3 añade unitarios para normalización de longitud, bounds estándar, Web Mercator, antimeridiano, inválidos y comparación con tolerancia. El flujo prueba que `moveend`/`zoomend` solo cambian pending, múltiples movimientos no hacen requests, el click usa el último viewport, filtros conservan applied, el centrado programático no genera CTA, una petición anterior queda abortada y no pisa la nueva, errores/429 conservan datos, la selección desaparecida se limpia y no hay escrituras en Web Storage.
+
 ## Pirámide prevista
 
 ### Tests unitarios

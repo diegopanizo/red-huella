@@ -13,6 +13,7 @@ import { parseImageUpload } from '../middleware/image-upload.js'
 import { imageUploadRateLimit } from '../middleware/image-upload-rate-limit.js'
 import { createContactRateLimiters } from '../middleware/contact-rate-limit.js'
 import { privateNoStore } from '../middleware/private-no-store.js'
+import { createMapRateLimit } from '../middleware/map-rate-limit.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { requireTrustedOrigin } from '../middleware/trusted-origin.js'
 import type { SessionRepository } from '../repositories/contracts/session.repository.js'
@@ -31,6 +32,7 @@ import {
   CreatePublicationService,
   GetPublicationService,
   ListPublicationsService,
+  ListMapPublicationsService,
   ManagePublicationService,
   UpdatePublicationService,
 } from '../services/publication.services.js'
@@ -76,6 +78,7 @@ export function createPublicationRouter(
     new CreatePublicationService(publications),
     new GetPublicationService(publications),
     new ListPublicationsService(publications),
+    new ListMapPublicationsService(publications),
     new ManagePublicationService(publications),
     new UpdatePublicationService(publications),
     new ChangePublicationStatusService(publications),
@@ -104,6 +107,7 @@ export function createPublicationRouter(
   )
   const router = Router()
   router.get('/', controller.list)
+  router.get('/map', createMapRateLimit(), controller.map)
   router.get('/mine', auth, controller.mine)
   router.get('/:id/manage', auth, controller.manage)
   router.get('/:id/contact-settings', auth, contactSettingsController.get)
