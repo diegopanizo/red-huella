@@ -16,11 +16,11 @@ El roadmap es secuencial a nivel de objetivos, pero podrá refinarse mediante AD
 - Configurar lint, format, typecheck, test y build sin duplicar dependencias.
 - Crear estructura mínima solo donde haya contenido real.
 
-## Milestone 2 — Backend base y diseño de persistencia (siguiente)
+## Milestone 2 — Backend base y diseño de persistencia (completado)
 
-Ampliar la base Express con manejo de errores, logging técnico y diseño de persistencia; mantener el health endpoint existente y no implementar aún el dominio completo.
+Implementados tooling PostgreSQL/Drizzle, pool central, logging, errores, health/readiness, cierre gracioso, tests y documentación; no se añadieron entidades.
 
-## Milestone 3 — PostgreSQL y modelo inicial
+## Milestone 3 — Modelo de datos inicial y PostgreSQL (siguiente)
 
 Proveedor de acceso a datos, migraciones iniciales, constraints, repositorios y entorno de test. PostGIS solo si lo exige el siguiente alcance.
 

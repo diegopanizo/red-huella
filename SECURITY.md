@@ -2,20 +2,23 @@
 
 ## Alcance y estado
 
-Este documento describe la estrategia de seguridad prevista para Red Huella. El proyecto está en Milestone 0 y no procesa todavía cuentas, publicaciones, imágenes ni ubicaciones.
+Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha completado el Milestone 2 y no procesa todavía cuentas, publicaciones, imágenes ni ubicaciones.
 
 ### Implementado
 
 - TypeScript estricto está habilitado en la configuración inicial de la API.
 - Frontend y API compilan con TypeScript estricto y comprobaciones adicionales de índices y propiedades opcionales.
 - La API aplica Helmet, limita JSON a 100 KB y usa CORS con el origen de desarrollo configurado mediante `WEB_ORIGIN`.
-- `NODE_ENV`, `PORT` y `WEB_ORIGIN` se validan con Zod; los valores predeterminados solo representan el entorno local actual.
-- El health endpoint no expone secretos, variables, rutas ni versiones del sistema.
+- `NODE_ENV`, `PORT`, `WEB_ORIGIN`, `DATABASE_URL` y `LOG_LEVEL` son obligatorias y se validan con Zod al arrancar.
+- Los errores tienen códigos estables, request ID y mensajes sanitizados; no incluyen stack ni detalles SQL.
+- Cada request recibe un UUID aleatorio interno y los logs Pino omiten bodies/headers y redactan claves sensibles.
+- El pool PostgreSQL es centralizado, limitado y convierte fallos de conexión en errores de base de datos.
+- El health endpoint no expone secretos, variables, rutas ni versiones del sistema y devuelve 503 si PostgreSQL no responde.
 - No se han encontrado secretos hardcodeados en el código fuente inspeccionado.
 
 ### Planificado
 
-Todos los demás controles descritos aquí están planificados y deberán verificarse mediante código, configuración y tests antes de considerarse implementados. La configuración CORS definitiva de producción también sigue pendiente.
+Siguen planificados autenticación, hashing de contraseñas, protección CSRF según la sesión elegida, rate limiting específico, uploads seguros, roles y autorización por recurso. La configuración CORS definitiva de producción también sigue pendiente.
 
 ## Principios
 
@@ -75,3 +78,5 @@ Se usarán logs estructurados con identificadores de correlación y redacción d
 ## Gestión de vulnerabilidades
 
 Las vulnerabilidades no deben publicarse en issues abiertos. Hasta definir un canal privado del proyecto, contactar directamente con la persona responsable del repositorio. El procedimiento y tiempos de respuesta se concretarán antes de hacer público el producto.
+
+La auditoría del Milestone 2 detecta cuatro avisos moderados en dependencias de desarrollo transitivas de `drizzle-kit`, originados por una versión antigua de `esbuild`. La corrección automática propuesta rebajaría Drizzle Kit con un cambio mayor, por lo que no se aplicó sin validación. Drizzle Studio no debe exponerse a redes no confiables; el riesgo se revisará al actualizar el toolkit.

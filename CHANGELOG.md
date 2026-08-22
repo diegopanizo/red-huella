@@ -14,6 +14,10 @@ Todos los cambios relevantes de Red Huella se documentarán aquí siguiendo [Kee
 - Tests reales de renderizado frontend e integración del health endpoint.
 - Pipeline inicial de GitHub Actions y versión de Node reproducible.
 - Coordinación multiplataforma de los servidores de desarrollo.
+- Pool PostgreSQL y tooling Drizzle sin tablas artificiales.
+- Health/readiness con estado de base de datos y respuesta 503 ante indisponibilidad.
+- Errores globales sanitizados, request IDs, logging Pino y cierre gracioso.
+- Tests unitarios de configuración, errores y health, más integración HTTP 200/503/404.
 
 ### Changed
 
@@ -27,3 +31,4 @@ Todos los cambios relevantes de Red Huella se documentarán aquí siguiendo [Kee
 ### Security
 
 - Documentado el modelo inicial de amenazas y la estrategia de protección de ubicaciones sensibles.
+- Añadidos redacción de logs, configuración obligatoria validada, límite JSON y respuestas sin detalles internos.

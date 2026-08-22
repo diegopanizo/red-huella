@@ -8,9 +8,11 @@ La base Express está implementada. Solo el endpoint técnico de salud está dis
 
 `GET /api/v1/health`
 
-- Respuesta: HTTP `200` con `{ "status": "ok" }`.
+- HTTP `200`: `{ "status": "ok", "database": "ok" }`.
+- HTTP `503`: `{ "status": "error", "database": "unavailable" }`.
 - No requiere autenticación.
-- No expone variables, versiones, rutas internas ni estado de dependencias futuras.
+- Comprueba readiness de la API y PostgreSQL. No se separa liveness todavía porque existe un único proceso/dependencia y no aporta operación adicional en esta fase.
+- No expone variables, host, usuario, versiones, rutas internas ni errores del driver.
 
 ## Convenciones previstas
 
@@ -23,13 +25,13 @@ La base Express está implementada. Solo el endpoint técnico de salud está dis
 - Paginación y límites máximos para colecciones.
 - Fechas ISO 8601 en UTC; coordenadas y precisión sujetas a privacidad.
 
-Formato conceptual de error, aún no implementado:
+Formato de error implementado para fallos globales y rutas desconocidas:
 
 ```json
 {
   "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "La solicitud no es válida",
+    "code": "APP_NOT_FOUND",
+    "message": "Recurso no encontrado",
     "requestId": "..."
   }
 }
@@ -62,7 +64,7 @@ Todos estos endpoints son **PLANNED** y se concretarán por milestone:
 
 ## Estados HTTP y seguridad
 
-Se usarán códigos HTTP coherentes (`200/201/204`, `400`, `401`, `403`, `404`, `409`, `422`, `429`, `500`) sin revelar existencia de recursos cuando ello facilite enumeración. `401` representa ausencia/fallo de autenticación y `403` identidad autenticada sin permiso. Los límites de payload, rate limiting y CORS se configurarán por riesgo y entorno.
+Se usan actualmente `200`, `404`, `500` y `503`; el resto se incorporará con endpoints reales. Cada respuesta incluye `X-Request-Id`; los errores incluyen el mismo ID en JSON. Los cuerpos JSON están limitados a 100 KB y solo se procesan como `application/json`.
 
 ## Versionado
 

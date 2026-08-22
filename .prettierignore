@@ -5,3 +5,4 @@ package-lock.json
 apps/web/public/icons.svg
 apps/web/public/favicon.svg
 apps/web/src/assets
+apps/api/src/database/migrations/meta

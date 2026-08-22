@@ -2,7 +2,21 @@
 
 ## Estado
 
-**Planificado.** No existe schema, conexión, migración ni seed. PostgreSQL es la base elegida; PostGIS se añadirá para geoespacial y pgvector solo si se aprueba el matching visual avanzado.
+**Tooling implementado; modelo de negocio planificado.** Existe un pool central `pg`, cliente tipado Drizzle, configuración de Drizzle Kit y directorio versionado de migrations. No hay tablas ni migrations porque no se creará una entidad artificial. La conexión real no se ha verificado en este entorno.
+
+## Decisión y conexión
+
+- PostgreSQL es la fuente de verdad relacional.
+- Drizzle ORM mantiene queries y schema explícitos, con Drizzle Kit para migrations.
+- `pg` es el único driver: su `Pool` es adecuado para conexiones persistentes, tests de integración y hosting Node tradicional.
+- `DATABASE_URL` es obligatoria, validada y consumida solo por configuración/cliente central.
+- El pool limita conexiones, tiempo de espera de conexión y tiempo inactivo; se cierra en `SIGINT`/`SIGTERM`.
+
+## Migrations
+
+El schema estará en `apps/api/src/database/schema` y las migrations SQL versionadas en `apps/api/src/database/migrations`. Flujo futuro: editar schema, ejecutar `npm run db:generate`, revisar SQL y ejecutar `npm run db:migrate` solo contra el entorno confirmado. `db:studio` es una herramienta local y no se expondrá públicamente.
+
+No se ha generado una migration vacía: Drizzle acepta un schema sin tablas y las entidades se incorporarán en el Milestone 3.
 
 ## Modelo conceptual inicial
 
@@ -94,6 +108,10 @@ La ubicación exacta interna y la pública aproximada serán atributos distintos
 - Migraciones versionadas, revisables y con estrategia de rollback/forward fix.
 - Seeds solo con datos sintéticos; nunca datos personales de producción.
 - Backups cifrados, restauraciones probadas y retención definida antes de producción.
+
+## Índices
+
+Cada índice futuro deberá responder a una query medida o a una constraint. Se priorizarán índices para claves foráneas, estados/filtros frecuentes y, posteriormente, GiST de PostGIS. Los índices vectoriales se decidirán únicamente con métricas del Milestone 14.
 
 ## pgvector
 

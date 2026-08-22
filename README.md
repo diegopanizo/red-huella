@@ -8,20 +8,20 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 1 completado (monorepo y tooling base).**
+**En desarrollo — Milestone 2 completado (backend base y diseño de persistencia).**
 
-Actualmente existe una plantilla frontend React/Vite ejecutable y una API Express mínima con un endpoint técnico de salud. El repositorio usa npm workspaces y dispone de lint, formato, typecheck, tests y build coordinados. No hay autenticación, persistencia, mapas, uploads, matching ni despliegue.
+Actualmente existe una plantilla frontend React/Vite ejecutable y una API Express con health de PostgreSQL, errores sanitizados, request IDs, logging estructurado y cierre gracioso. Drizzle y el pool PostgreSQL están configurados, pero no existe todavía ningún schema de negocio ni se ha verificado una instancia local en este entorno.
 
 ## Stack tecnológico
 
-| Área            | Estado           | Tecnología                                                            |
-| --------------- | ---------------- | --------------------------------------------------------------------- |
-| Frontend        | Inicializado     | React, Vite, TypeScript, ESLint                                       |
-| Backend         | Base técnica     | Node.js, Express, TypeScript, Helmet, CORS y Zod                      |
-| Base de datos   | Planificada      | PostgreSQL; PostGIS en la fase geoespacial                            |
-| Matching visual | Futuro           | pgvector y proveedor desacoplado de embeddings                        |
-| Testing         | Base configurada | Vitest, React Testing Library y Supertest; Playwright queda pendiente |
-| Infraestructura | CI inicial       | GitHub Actions; plataforma de despliegue pendiente                    |
+| Área            | Estado            | Tecnología                                                            |
+| --------------- | ----------------- | --------------------------------------------------------------------- |
+| Frontend        | Inicializado      | React, Vite, TypeScript, ESLint                                       |
+| Backend         | Base técnica      | Node.js, Express, TypeScript, Helmet, CORS y Zod                      |
+| Base de datos   | Tooling preparado | PostgreSQL, `pg` y Drizzle; schema de negocio pendiente               |
+| Matching visual | Futuro            | pgvector y proveedor desacoplado de embeddings                        |
+| Testing         | Base configurada  | Vitest, React Testing Library y Supertest; Playwright queda pendiente |
+| Infraestructura | CI inicial        | GitHub Actions; plataforma de despliegue pendiente                    |
 
 ## Requisitos
 
@@ -72,11 +72,30 @@ npm run dev:api
 
 La API usa por defecto `http://localhost:3000`. También se pueden iniciar ambos procesos con `npm run dev`; `concurrently` coordina y cierra ambos procesos de forma multiplataforma.
 
-Las variables disponibles están documentadas en `.env.example`. Los valores predeterminados son seguros para desarrollo local.
+Antes de iniciar la API, copia `.env.example` a `.env` y sustituye `CHANGE_ME` por una contraseña local. Todas las variables son obligatorias y se validan al arrancar.
 
 ## Health endpoint
 
-`GET http://localhost:3000/api/v1/health` devuelve `200` y `{ "status": "ok" }`. Es un endpoint técnico y no expone configuración del sistema.
+`GET http://localhost:3000/api/v1/health` devuelve `200` con `{ "status": "ok", "database": "ok" }` cuando PostgreSQL responde, o `503` con `{ "status": "error", "database": "unavailable" }`. No expone configuración del sistema.
+
+## PostgreSQL local y Drizzle
+
+Instala PostgreSQL localmente, crea una base `red_huella` y un usuario de aplicación sin privilegios de superusuario. Ejemplo orientativo ejecutado por una cuenta administradora:
+
+```sql
+CREATE ROLE red_huella_app LOGIN PASSWORD 'contraseña-local-segura';
+CREATE DATABASE red_huella OWNER red_huella_app;
+```
+
+Después configura `DATABASE_URL` en `.env`. El repositorio no incluye Docker en esta fase. Los comandos disponibles son:
+
+```bash
+npm run db:generate
+npm run db:migrate
+npm run db:studio
+```
+
+No hay migraciones ni tablas todavía porque crear una tabla técnica artificial no aporta valor.
 
 ## Estructura del proyecto
 
@@ -84,7 +103,7 @@ Las variables disponibles están documentadas en `.env.example`. Los valores pre
 red-huella/
 ├── apps/
 │   ├── web/              # Frontend inicializado
-│   └── api/              # Configuración inicial; implementación pendiente
+│   └── api/              # Backend base y tooling PostgreSQL/Drizzle
 ├── packages/             # Reservado; sin paquete compartido prematuro
 ├── database/             # Migraciones y seeds futuros
 ├── docs/                 # Documentación viva

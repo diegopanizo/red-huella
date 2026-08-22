@@ -35,6 +35,14 @@ Nunca:
 
 Aplicar mínimo privilegio, defensa en profundidad, Secure by Design y Privacy by Design. Toda entrada debe validarse en servidor. Consultar `SECURITY.md` y `docs/PRIVACY.md` antes de trabajar con identidad, uploads, ubicación o logs.
 
+## Persistencia y backend
+
+- Usar exclusivamente el cliente/pool central de `apps/api/src/database/client.ts`; nunca abrir conexiones por request.
+- Ejecutar queries mediante Drizzle/repositories y migrations versionadas; nunca modificar producción manualmente.
+- No ejecutar `db:migrate` contra una URL no verificada ni registrar `DATABASE_URL`.
+- Todo acceso a variables de entorno pasa por `config/env.ts`.
+- Propagar `requestId` y usar el logger estructurado; no registrar bodies, cookies, tokens ni cabeceras sensibles.
+
 ## Calidad del código
 
 - Aplicar KISS, DRY y SOLID cuando reduzcan complejidad real.

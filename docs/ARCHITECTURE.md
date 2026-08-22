@@ -2,7 +2,7 @@
 
 ## Estado y objetivos
 
-**Estado: arquitectura aceptada; infraestructura del Milestone 1 implementada.**
+**Estado: arquitectura aceptada; backend base del Milestone 2 implementado.**
 
 La arquitectura prioriza separación de responsabilidades, cambios incrementales y testabilidad. Se mantendrá un monorepo porque frontend, API, contratos y documentación evolucionarán juntos. No se incorporarán servicios distribuidos sin una necesidad demostrada.
 
@@ -21,7 +21,7 @@ flowchart TD
     P -. extensión avanzada .-> V[pgvector]
 ```
 
-React/Vite y la base técnica Express están inicializados. La API expone únicamente `GET /api/v1/health`; persistencia y extensiones siguen pendientes.
+React/Vite y la base Express están inicializados. La API expone únicamente health, con pool PostgreSQL/Drizzle, errores globales, request IDs y logging. El schema de negocio y las extensiones siguen pendientes.
 
 ## Estructura definitiva propuesta
 
@@ -76,6 +76,20 @@ flowchart LR
 - Service/Use Case: reglas, coordinación, autorización contextual y transacciones.
 - Repository: persistencia y queries parametrizadas; no expone detalles de BD a controllers.
 - Middleware transversal: autenticación futura, límites, correlación y errores; no esconderá reglas de negocio.
+
+La implementación actual separa `routes/health.routes.ts`, `services/health.service.ts` y `database/client.ts`. El health no tiene controller porque añadiría una delegación sin lógica. Las dependencias se inyectan en `createApp` para probar la API sin abrir puertos ni exigir PostgreSQL.
+
+```mermaid
+flowchart LR
+    RID[Request ID] --> LOG[Request logging]
+    LOG --> SEC[Helmet / CORS / JSON limit]
+    SEC --> HR[Health route]
+    HR --> HS[Health service]
+    HS --> DP[Database probe]
+    DP --> PG[(PostgreSQL pool)]
+    SEC --> NF[Not found]
+    NF --> EH[Global error handler]
+```
 
 ## Comunicación y contratos
 

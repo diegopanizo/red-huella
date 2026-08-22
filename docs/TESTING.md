@@ -7,9 +7,20 @@
 Tests actuales:
 
 - `apps/web/src/App.test.tsx`: comprueba que la interfaz inicial renderiza su encabezado y botón principal.
-- `apps/api/src/app.test.ts`: comprueba `GET /api/v1/health`, HTTP 200 y `{ "status": "ok" }`.
+- `apps/api/src/config/env.test.ts`: configuración válida, obligatoria ausente y valores inválidos.
+- `apps/api/src/errors/app-error.test.ts`: jerarquía, códigos y sanitización de errores desconocidos.
+- `apps/api/src/services/health.service.test.ts`: PostgreSQL disponible y no disponible.
+- `apps/api/src/app.test.ts`: health 200/503, request ID, 404 y contrato de error sanitizado.
 
 La cobertura de negocio sigue pendiente porque todavía no existen funcionalidades de negocio.
+
+## Ejecución
+
+`npm run test` ejecuta unitarios e integración HTTP sin watch. `npm run test:watch` es solo para desarrollo. La configuración de Vitest aporta variables sintéticas; ninguna prueba conecta accidentalmente a una base real.
+
+## Estrategia de base de datos
+
+Los unitarios inyectan un `DatabaseProbe` controlado y Supertest usa la aplicación sin puerto. Esto prueba decisiones 200/503 sin convertir un mock en sustituto de PostgreSQL. Las pruebas reales de repositories/migrations se añadirán en Milestone 3 contra PostgreSQL aislado; no se usará SQLite porque su semántica difiere.
 
 ## Pirámide prevista
 

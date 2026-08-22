@@ -145,3 +145,27 @@ Los ADR son simplificados. Un cambio posterior conservará la decisión anterior
 **Alternatives:** Un script artesanal con `child_process`, terminales separadas o no ofrecer desarrollo coordinado.
 
 **Consequences:** Se añade una dependencia de desarrollo acotada, a cambio de cierre fiable y comportamiento consistente entre sistemas operativos. Los comandos individuales siguen disponibles.
+
+## ADR-013 — PostgreSQL, Drizzle ORM y driver pg
+
+**Status:** Accepted
+
+**Context:** El dominio futuro necesita integridad relacional, migrations explícitas y evolución hacia PostGIS/pgvector sin ocultar SQL. Node requiere un driver apto para conexiones persistentes.
+
+**Decision:** Usar PostgreSQL como fuente de verdad, Drizzle ORM/Kit para schema, queries y migrations, y exclusivamente `pg` con un pool central como driver.
+
+**Alternatives:** Prisma, Sequelize, TypeORM, drivers serverless o SQL manual sin toolkit.
+
+**Consequences:** Buen tipado y control del SQL con menor abstracción; el equipo debe revisar migrations y operar PostgreSQL. No se crean tablas hasta el diseño de dominio del Milestone 3. PostGIS y pgvector siguen aplazados.
+
+## ADR-014 — Logging estructurado con Pino
+
+**Status:** Accepted
+
+**Context:** La API necesita correlacionar requests y errores sin registrar cuerpos ni secretos, con bajo coste operativo.
+
+**Decision:** Usar Pino, UUID interno por request y logs de finalización con método, path, estado y duración. Los health checks exitosos se omiten para evitar ruido; los fallidos sí se registran.
+
+**Alternatives:** `console`, Winston o logging HTTP automático con cabeceras completas.
+
+**Consequences:** Logs JSON procesables y redacción central; producción deberá definir transporte, retención y acceso. El request ID entrante no se reutiliza para evitar validación/confianza prematura.
