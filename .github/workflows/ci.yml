@@ -39,3 +39,43 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  database-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: red_huella_test
+          POSTGRES_USER: red_huella_test
+          POSTGRES_PASSWORD: red_huella_test_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U red_huella_test -d red_huella_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      PORT: 3000
+      WEB_ORIGIN: http://localhost:5173
+      DATABASE_URL: postgresql://red_huella_test:red_huella_test_ci@localhost:5432/red_huella_placeholder
+      DATABASE_TEST_URL: postgresql://red_huella_test:red_huella_test_ci@localhost:5432/red_huella_test
+      LOG_LEVEL: silent
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run PostgreSQL integration tests
+        run: npm run test:db

@@ -18,6 +18,10 @@ Todos los cambios relevantes de Red Huella se documentarán aquí siguiendo [Kee
 - Health/readiness con estado de base de datos y respuesta 503 ante indisponibilidad.
 - Errores globales sanitizados, request IDs, logging Pino y cierre gracioso.
 - Tests unitarios de configuración, errores y health, más integración HTTP 200/503/404.
+- Modelo PostgreSQL inicial para usuarios, animales, publicaciones e imágenes, con enums, constraints e índices.
+- Migration Drizzle inicial, seed idempotente y repositories tipados para las tres entidades principales.
+- PostgreSQL 17 opcional mediante Compose y job CI aislado para integración real.
+- Salvaguardas para impedir limpieza de una base que no sea explícitamente de test.
 
 ### Changed
 

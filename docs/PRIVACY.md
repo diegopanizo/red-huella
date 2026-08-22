@@ -22,6 +22,10 @@ flowchart LR
 - Direcciones de domicilios, refugios temporales y lugares sensibles exigirán especial cautela.
 - Compartir el punto exacto entre partes, si se implementa, requerirá un flujo explícito, autenticado, limitado y auditable.
 
+### Estado del modelo actual
+
+`publications.latitude` y `longitude` almacenan provisionalmente la pareja exacta interna y aplican rangos válidos. No existe endpoint que las exponga. No se ha implementado todavía ubicación pública ni algoritmo de aproximación. En el Milestone 7 se migrará a PostGIS y se añadirá una representación pública separada, evitando derivar o publicar automáticamente un domicilio. Hasta entonces deben usarse solo datos sintéticos y conservar la mínima precisión necesaria.
+
 ## Imágenes y EXIF
 
 Las imágenes pueden revelar personas, matrículas, viviendas y GPS. El sistema futuro limitará contenido y finalidad, eliminará EXIF antes de exponer archivos, generará derivados seguros y permitirá retirar imágenes. Se advertirá que solo deben subirse imágenes con derecho a hacerlo. Los originales, si fueran necesarios, tendrán acceso y retención distintos.

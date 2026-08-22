@@ -169,3 +169,39 @@ Los ADR son simplificados. Un cambio posterior conservará la decisión anterior
 **Alternatives:** `console`, Winston o logging HTTP automático con cabeceras completas.
 
 **Consequences:** Logs JSON procesables y redacción central; producción deberá definir transporte, retención y acceso. El request ID entrante no se reutiliza para evitar validación/confianza prematura.
+
+## ADR-015 — Identidad e invariantes del modelo inicial
+
+**Status:** Accepted
+
+**Context:** El modelo necesita IDs no secuenciales, valores controlados, email consistente y fechas inequívocas antes de implementar autenticación.
+
+**Decision:** Usar UUID v4 generados por PostgreSQL, enums nativos para conjuntos cerrados, email normalizado a lowercase por repository y reforzado con `CHECK` más índice único, y `timestamptz` interpretado en UTC. `password_hash` se aplaza al Milestone 4 para introducirlo junto a sus invariantes de seguridad.
+
+**Alternatives:** IDs secuenciales, enums libres en texto, `citext`, índice funcional sobre email, timestamps sin zona e incluir un password nullable sin flujo.
+
+**Consequences:** La base protege invariantes y no requiere extensiones; añadir valores enum exige migration. Todo acceso que cree usuarios debe reutilizar la normalización. La UI futura convierte UTC a zona local.
+
+## ADR-016 — Contratos repository sobre Drizzle
+
+**Status:** Accepted
+
+**Context:** Los services futuros no deben conocer queries o tipos operativos del driver, pero una arquitectura ceremonial sería prematura.
+
+**Decision:** Definir contratos pequeños `UserRepository`, `AnimalRepository` y `PublicationRepository`, con implementaciones Drizzle que solo ofrecen `create` y `findById` y convierten errores técnicos en `DatabaseError`.
+
+**Alternatives:** Inyectar Drizzle directamente en services o crear capas genéricas CRUD.
+
+**Consequences:** Los services podrán probarse contra contratos y la persistencia conserva queries explícitas. Cada método nuevo deberá responder a un caso de uso real.
+
+## ADR-017 — PostgreSQL 17 local y Compose opcional
+
+**Status:** Accepted
+
+**Context:** El proyecto debe funcionar con PostgreSQL instalado en Windows y ofrecer un entorno reproducible sin dockerizar aplicaciones.
+
+**Decision:** Soportar PostgreSQL 17 mediante `DATABASE_URL` y proporcionar `compose.yml` únicamente para PostgreSQL, con volumen, healthcheck y una base de test separada.
+
+**Alternatives:** Exigir instalación local, dockerizar todo el monorepo o usar una base embebida.
+
+**Consequences:** La aplicación no conoce Docker y puede apuntar a local/cloud. Docker es opcional y sus credenciales son solo de desarrollo. La instalación PostgreSQL 9.5 detectada no es la versión objetivo.

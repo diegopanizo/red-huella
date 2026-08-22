@@ -4,6 +4,8 @@
 
 La base Express está implementada. Solo el endpoint técnico de salud está disponible; las áreas de negocio permanecen **PLANNED**.
 
+El modelo y repositories de `users`, `animals` y `publications` son internos. No se han creado endpoints temporales ni se expone acceso directo a persistencia.
+
 ## Endpoint implementado
 
 `GET /api/v1/health`

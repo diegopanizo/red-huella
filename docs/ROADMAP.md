@@ -20,11 +20,11 @@ El roadmap es secuencial a nivel de objetivos, pero podrá refinarse mediante AD
 
 Implementados tooling PostgreSQL/Drizzle, pool central, logging, errores, health/readiness, cierre gracioso, tests y documentación; no se añadieron entidades.
 
-## Milestone 3 — Modelo de datos inicial y PostgreSQL (siguiente)
+## Milestone 3 — Modelo de datos inicial y PostgreSQL (completado)
 
-Proveedor de acceso a datos, migraciones iniciales, constraints, repositorios y entorno de test. PostGIS solo si lo exige el siguiente alcance.
+Implementados cuatro tablas, migration, seed, constraints, índices, repositories, Compose opcional y suite PostgreSQL separada. La ejecución local real queda pendiente de credenciales.
 
-## Milestone 4 — Autenticación
+## Milestone 4 — Autenticación y gestión inicial de usuarios (siguiente)
 
 Registro, sesión, hashing, autorización base, recuperación diseñada y tests de abuso.
 

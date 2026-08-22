@@ -2,7 +2,7 @@
 
 ## Estado y objetivos
 
-**Estado: arquitectura aceptada; backend base del Milestone 2 implementado.**
+**Estado: arquitectura aceptada; persistencia inicial del Milestone 3 implementada.**
 
 La arquitectura prioriza separación de responsabilidades, cambios incrementales y testabilidad. Se mantendrá un monorepo porque frontend, API, contratos y documentación evolucionarán juntos. No se incorporarán servicios distribuidos sin una necesidad demostrada.
 
@@ -21,7 +21,7 @@ flowchart TD
     P -. extensión avanzada .-> V[pgvector]
 ```
 
-React/Vite y la base Express están inicializados. La API expone únicamente health, con pool PostgreSQL/Drizzle, errores globales, request IDs y logging. El schema de negocio y las extensiones siguen pendientes.
+React/Vite y la base Express están inicializados. La API expone únicamente health. PostgreSQL/Drizzle implementa el modelo inicial, migration, seed y repositories, mientras los endpoints de dominio y extensiones siguen pendientes.
 
 ## Estructura definitiva propuesta
 
@@ -95,6 +95,21 @@ flowchart LR
 
 La API futura será REST/JSON bajo `/api/v1`. Se definirán respuestas y errores consistentes, paginación y compatibilidad. `packages/shared` alojará únicamente contratos que deban compilarse en ambos lados; no contendrá acceso a Express, React o base de datos.
 
+## Persistencia
+
+```mermaid
+flowchart LR
+    S[Future application service] --> RC[Repository contract]
+    RC --> DR[Drizzle repository]
+    DR --> DC[Central database client]
+    DC --> PP[pg Pool]
+    PP --> PG[(PostgreSQL 17)]
+```
+
+`UserRepository`, `AnimalRepository` y `PublicationRepository` exponen únicamente `create` y `findById`. Las implementaciones Drizzle traducen fallos técnicos a `DatabaseError`. No se crean services de negocio ni endpoints temporales para probar repositories.
+
+La suite normal inyecta dependencias sin PostgreSQL. Una suite separada aplica migrations y prueba repositories/constraints contra PostgreSQL real, protegida por una URL exclusiva terminada en `_test`. CI ejecuta esa suite en un job con PostgreSQL 17.
+
 ## Tooling del monorepo
 
 La raíz coordina `apps/*` y futuros `packages/*` mediante npm workspaces. Existe un único lockfile y un toolchain compartido para TypeScript, ESLint y Prettier. Cada aplicación conserva scripts de typecheck, test y build. `concurrently` es la única dependencia de orquestación y permite iniciar y detener web/API de forma fiable en Windows, Linux y macOS. Node 24 y npm 11 son las versiones soportadas en esta fase. La CI ejecuta instalación reproducible y todas las comprobaciones raíz.
@@ -124,4 +139,4 @@ El matching tradicional comparará especie, raza, color, tamaño, sexo, distanci
 
 ## Decisiones y evolución
 
-Las decisiones aceptadas están en `DECISIONS.md`. El Milestone 1 configuró el monorepo y las comprobaciones comunes; no se adelanta implementación de dominio, persistencia ni deployment.
+Las decisiones aceptadas están en `DECISIONS.md`. El modelo persiste solo las cuatro entidades aprobadas; autenticación, APIs de dominio, PostGIS y deployment no se adelantan.

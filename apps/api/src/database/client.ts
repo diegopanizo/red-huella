@@ -3,6 +3,7 @@ import { Pool } from 'pg'
 
 import { env } from '../config/index.js'
 import { DatabaseError } from '../errors/app-error.js'
+import * as schema from './schema/index.js'
 
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
@@ -11,7 +12,7 @@ export const pool = new Pool({
   connectionTimeoutMillis: 5_000,
 })
 
-export const db = drizzle({ client: pool })
+export const db = drizzle({ client: pool, schema })
 
 export const databaseProbe = {
   async check(): Promise<void> {

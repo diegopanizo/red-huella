@@ -10,5 +10,9 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["drizzle.config.ts", "vitest.config.ts"]
+  "include": [
+    "drizzle.config.ts",
+    "vitest.config.ts",
+    "vitest.database.config.ts"
+  ]
 }

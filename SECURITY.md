@@ -2,7 +2,7 @@
 
 ## Alcance y estado
 
-Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha completado el Milestone 2 y no procesa todavía cuentas, publicaciones, imágenes ni ubicaciones.
+Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha completado el Milestone 3, pero todavía no expone endpoints de dominio ni procesa datos de usuarios reales.
 
 ### Implementado
 
@@ -13,6 +13,9 @@ Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha
 - Los errores tienen códigos estables, request ID y mensajes sanitizados; no incluyen stack ni detalles SQL.
 - Cada request recibe un UUID aleatorio interno y los logs Pino omiten bodies/headers y redactan claves sensibles.
 - El pool PostgreSQL es centralizado, limitado y convierte fallos de conexión en errores de base de datos.
+- El schema impone enums, claves foráneas, unicidad de email, email lowercase, coordenadas válidas y posiciones de imagen no negativas.
+- Las operaciones de repository usan Drizzle y queries parametrizadas; el logging SQL detallado está desactivado.
+- Los tests PostgreSQL exigen `NODE_ENV=test`, URL distinta y nombre de base terminado en `_test` antes de limpiar filas.
 - El health endpoint no expone secretos, variables, rutas ni versiones del sistema y devuelve 503 si PostgreSQL no responde.
 - No se han encontrado secretos hardcodeados en el código fuente inspeccionado.
 
@@ -79,4 +82,4 @@ Se usarán logs estructurados con identificadores de correlación y redacción d
 
 Las vulnerabilidades no deben publicarse en issues abiertos. Hasta definir un canal privado del proyecto, contactar directamente con la persona responsable del repositorio. El procedimiento y tiempos de respuesta se concretarán antes de hacer público el producto.
 
-La auditoría del Milestone 2 detecta cuatro avisos moderados en dependencias de desarrollo transitivas de `drizzle-kit`, originados por una versión antigua de `esbuild`. La corrección automática propuesta rebajaría Drizzle Kit con un cambio mayor, por lo que no se aplicó sin validación. Drizzle Studio no debe exponerse a redes no confiables; el riesgo se revisará al actualizar el toolkit.
+La auditoría del Milestone 2 detectó cuatro avisos moderados en dependencias de desarrollo transitivas de `drizzle-kit`, originados por una versión antigua de `esbuild`. La corrección automática propuesta rebajaría Drizzle Kit con un cambio mayor, por lo que no se aplicó sin validación. Drizzle Studio no debe exponerse a redes no confiables; el riesgo se revisará al actualizar el toolkit.

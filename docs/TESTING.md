@@ -11,6 +11,8 @@ Tests actuales:
 - `apps/api/src/errors/app-error.test.ts`: jerarquía, códigos y sanitización de errores desconocidos.
 - `apps/api/src/services/health.service.test.ts`: PostgreSQL disponible y no disponible.
 - `apps/api/src/app.test.ts`: health 200/503, request ID, 404 y contrato de error sanitizado.
+- `apps/api/src/repositories/normalize-email.test.ts`: normalización determinista de email.
+- `apps/api/src/database/test-database.test.ts`: safeguards para impedir limpieza fuera de una base `_test` separada.
 
 La cobertura de negocio sigue pendiente porque todavía no existen funcionalidades de negocio.
 
@@ -20,7 +22,9 @@ La cobertura de negocio sigue pendiente porque todavía no existen funcionalidad
 
 ## Estrategia de base de datos
 
-Los unitarios inyectan un `DatabaseProbe` controlado y Supertest usa la aplicación sin puerto. Esto prueba decisiones 200/503 sin convertir un mock en sustituto de PostgreSQL. Las pruebas reales de repositories/migrations se añadirán en Milestone 3 contra PostgreSQL aislado; no se usará SQLite porque su semántica difiere.
+Los unitarios inyectan un `DatabaseProbe` controlado y Supertest usa la aplicación sin puerto. La suite normal no necesita PostgreSQL.
+
+La suite `npm run test:db` usa PostgreSQL real, aplica migrations y valida tablas, inserts, unicidad de email, animales, publicaciones, FKs, coordenadas, imágenes y `findById`. No usa SQLite ni mocks como sustituto. Requiere `NODE_ENV=test`, `DATABASE_TEST_URL` distinta de desarrollo y nombre terminado en `_test`; limpia filas con `DELETE` en orden seguro, nunca `DROP`/`TRUNCATE`.
 
 ## Pirámide prevista
 
@@ -58,9 +62,9 @@ Playwright se añadirá en el Milestone 12 para recorridos críticos: identidad,
 - Ignorar, saltar o capturar errores para obtener verde.
 - Depender de red externa, reloj real o datos personales sin aislamiento.
 
-## Calidad y CI futuras
+## Calidad y CI
 
-Cada corrección incorporará una regresión cuando sea viable. No se perseguirá cobertura como objetivo aislado; se fijarán umbrales razonados cuando exista una línea base. La CI ejecutará lint, typecheck, tests y build, y publicará evidencia sin secretos. Los E2E podrán ejecutarse en una etapa separada por su coste.
+Cada corrección incorporará una regresión cuando sea viable. La CI ejecuta calidad sin base en el job principal y `test:db` en un job separado con PostgreSQL 17 y credenciales efímeras. Los E2E permanecen fuera de alcance.
 
 ## Datos de prueba
 

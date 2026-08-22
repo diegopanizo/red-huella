@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
+    exclude: ['src/**/*.db.test.ts'],
     env: {
       NODE_ENV: 'test',
       PORT: '3000',

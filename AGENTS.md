@@ -40,6 +40,8 @@ Aplicar mínimo privilegio, defensa en profundidad, Secure by Design y Privacy b
 - Usar exclusivamente el cliente/pool central de `apps/api/src/database/client.ts`; nunca abrir conexiones por request.
 - Ejecutar queries mediante Drizzle/repositories y migrations versionadas; nunca modificar producción manualmente.
 - No ejecutar `db:migrate` contra una URL no verificada ni registrar `DATABASE_URL`.
+- No usar `db push` como sustituto de migrations versionadas.
+- Antes de limpiar datos de tests, exigir `NODE_ENV=test`, URL separada y base terminada en `_test`.
 - Todo acceso a variables de entorno pasa por `config/env.ts`.
 - Propagar `requestId` y usar el logger estructurado; no registrar bodies, cookies, tokens ni cabeceras sensibles.
 

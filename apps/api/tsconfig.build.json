@@ -5,6 +5,7 @@
     "node_modules",
     "src/**/*.test.ts",
     "drizzle.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "vitest.database.config.ts"
   ]
 }

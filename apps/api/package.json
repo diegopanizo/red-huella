@@ -12,10 +12,12 @@
     "typecheck": "tsc --noEmit --pretty false && tsc --project tsconfig.node.json --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "vitest run --config vitest.database.config.ts",
     "build": "tsc --project tsconfig.build.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/database/seed.ts"
   },
   "keywords": [],
   "author": "",

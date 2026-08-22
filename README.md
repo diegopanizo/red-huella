@@ -8,20 +8,20 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 2 completado (backend base y diseño de persistencia).**
+**En desarrollo — Milestone 3 completado (modelo inicial y persistencia PostgreSQL).**
 
-Actualmente existe una plantilla frontend React/Vite ejecutable y una API Express con health de PostgreSQL, errores sanitizados, request IDs, logging estructurado y cierre gracioso. Drizzle y el pool PostgreSQL están configurados, pero no existe todavía ningún schema de negocio ni se ha verificado una instancia local en este entorno.
+Actualmente existe una plantilla frontend React/Vite y una API Express con health de PostgreSQL, errores sanitizados, request IDs, logging estructurado y cierre gracioso. El schema Drizzle implementa `users`, `animals`, `publications` y `publication_images`, con migration, seed y repositories base. La conexión real sigue pendiente de credenciales locales.
 
 ## Stack tecnológico
 
-| Área            | Estado            | Tecnología                                                            |
-| --------------- | ----------------- | --------------------------------------------------------------------- |
-| Frontend        | Inicializado      | React, Vite, TypeScript, ESLint                                       |
-| Backend         | Base técnica      | Node.js, Express, TypeScript, Helmet, CORS y Zod                      |
-| Base de datos   | Tooling preparado | PostgreSQL, `pg` y Drizzle; schema de negocio pendiente               |
-| Matching visual | Futuro            | pgvector y proveedor desacoplado de embeddings                        |
-| Testing         | Base configurada  | Vitest, React Testing Library y Supertest; Playwright queda pendiente |
-| Infraestructura | CI inicial        | GitHub Actions; plataforma de despliegue pendiente                    |
+| Área            | Estado           | Tecnología                                                            |
+| --------------- | ---------------- | --------------------------------------------------------------------- |
+| Frontend        | Inicializado     | React, Vite, TypeScript, ESLint                                       |
+| Backend         | Base técnica     | Node.js, Express, TypeScript, Helmet, CORS y Zod                      |
+| Base de datos   | Modelo inicial   | PostgreSQL 17, `pg`, Drizzle, migration y seed                        |
+| Matching visual | Futuro           | pgvector y proveedor desacoplado de embeddings                        |
+| Testing         | Base configurada | Vitest, React Testing Library y Supertest; Playwright queda pendiente |
+| Infraestructura | CI inicial       | GitHub Actions; plataforma de despliegue pendiente                    |
 
 ## Requisitos
 
@@ -72,30 +72,59 @@ npm run dev:api
 
 La API usa por defecto `http://localhost:3000`. También se pueden iniciar ambos procesos con `npm run dev`; `concurrently` coordina y cierra ambos procesos de forma multiplataforma.
 
-Antes de iniciar la API, copia `.env.example` a `.env` y sustituye `CHANGE_ME` por una contraseña local. Todas las variables son obligatorias y se validan al arrancar.
+Antes de iniciar la API, copia `.env.example` a `.env` y adapta las URLs a tu instalación. `DATABASE_TEST_URL` es opcional para la API, pero obligatoria para `test:db`.
 
 ## Health endpoint
 
 `GET http://localhost:3000/api/v1/health` devuelve `200` con `{ "status": "ok", "database": "ok" }` cuando PostgreSQL responde, o `503` con `{ "status": "error", "database": "unavailable" }`. No expone configuración del sistema.
 
-## PostgreSQL local y Drizzle
+## PostgreSQL
 
-Instala PostgreSQL localmente, crea una base `red_huella` y un usuario de aplicación sin privilegios de superusuario. Ejemplo orientativo ejecutado por una cuenta administradora:
+La aplicación solo depende de `DATABASE_URL`; no detecta ni requiere Docker.
+
+### Opción A — PostgreSQL local
+
+Se recomienda PostgreSQL 17. Crea bases separadas de desarrollo y test con usuarios sin privilegios de superusuario. Ejemplo orientativo ejecutado por una cuenta administradora:
 
 ```sql
 CREATE ROLE red_huella_app LOGIN PASSWORD 'contraseña-local-segura';
 CREATE DATABASE red_huella OWNER red_huella_app;
+CREATE ROLE red_huella_test LOGIN PASSWORD 'otra-contraseña-local';
+CREATE DATABASE red_huella_test OWNER red_huella_test;
 ```
 
-Después configura `DATABASE_URL` en `.env`. El repositorio no incluye Docker en esta fase. Los comandos disponibles son:
+Configura ambas URLs en `.env`. La base de test debe ser distinta y su nombre debe terminar en `_test`.
+
+### Opción B — Docker Compose
+
+Si Docker está instalado:
+
+```bash
+docker compose up -d
+```
+
+`compose.yml` levanta únicamente PostgreSQL 17, con volumen persistente, healthcheck y credenciales locales documentadas en `.env.example`. Docker Compose es una alternativa reproducible de desarrollo; no representa la estrategia definitiva de producción.
+
+## Migrations y seed
+
+Los comandos disponibles son:
 
 ```bash
 npm run db:generate
 npm run db:migrate
 npm run db:studio
+npm run db:seed
 ```
 
-No hay migraciones ni tablas todavía porque crear una tabla técnica artificial no aporta valor.
+El flujo principal usa migrations versionadas, nunca `db push`. `db:seed` añade de forma idempotente dos usuarios sin contraseña, tres animales, tres publicaciones y dos claves de imagen sintéticas. No crea administradores ni credenciales.
+
+## Tests PostgreSQL
+
+```bash
+npm run test:db
+```
+
+El comando requiere `NODE_ENV=test`, `DATABASE_TEST_URL` diferente de `DATABASE_URL` y una base cuyo nombre termine en `_test`. Aplica migrations y limpia únicamente las cuatro tablas de esa base entre pruebas.
 
 ## Estructura del proyecto
 

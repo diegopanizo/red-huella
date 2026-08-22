@@ -1,118 +1,149 @@
-# Modelo de datos
+# Base de datos
 
 ## Estado
 
-**Tooling implementado; modelo de negocio planificado.** Existe un pool central `pg`, cliente tipado Drizzle, configuración de Drizzle Kit y directorio versionado de migrations. No hay tablas ni migrations porque no se creará una entidad artificial. La conexión real no se ha verificado en este entorno.
+El modelo inicial está implementado mediante PostgreSQL 17, Drizzle ORM y el driver único `pg`. Existe una migration versionada, seed idempotente y repositories base. La generación del SQL está verificada; la conexión/migration sobre una instancia real no pudo verificarse por falta de credenciales locales.
 
-## Decisión y conexión
-
-- PostgreSQL es la fuente de verdad relacional.
-- Drizzle ORM mantiene queries y schema explícitos, con Drizzle Kit para migrations.
-- `pg` es el único driver: su `Pool` es adecuado para conexiones persistentes, tests de integración y hosting Node tradicional.
-- `DATABASE_URL` es obligatoria, validada y consumida solo por configuración/cliente central.
-- El pool limita conexiones, tiempo de espera de conexión y tiempo inactivo; se cierra en `SIGINT`/`SIGTERM`.
-
-## Migrations
-
-El schema estará en `apps/api/src/database/schema` y las migrations SQL versionadas en `apps/api/src/database/migrations`. Flujo futuro: editar schema, ejecutar `npm run db:generate`, revisar SQL y ejecutar `npm run db:migrate` solo contra el entorno confirmado. `db:studio` es una herramienta local y no se expondrá públicamente.
-
-No se ha generado una migration vacía: Drizzle acepta un schema sin tablas y las entidades se incorporarán en el Milestone 3.
-
-## Modelo conceptual inicial
+## Tablas implementadas
 
 ```mermaid
 erDiagram
-    USER ||--o{ PUBLICATION : creates
-    USER ||--o{ FAVORITE : saves
-    USER ||--o{ REPORT : submits
-    USER o|--o| SHELTER : represents
-    ANIMAL ||--o{ PUBLICATION : described_in
-    PUBLICATION ||--o{ PUBLICATION_IMAGE : has
-    PUBLICATION ||--o{ FAVORITE : receives
-    PUBLICATION ||--o{ REPORT : receives
-    PUBLICATION ||--o{ MATCH : lost_candidate
-    PUBLICATION ||--o{ MATCH : found_candidate
+    USERS ||--o{ PUBLICATIONS : creates
+    ANIMALS ||--o{ PUBLICATIONS : appears_in
+    PUBLICATIONS ||--o{ PUBLICATION_IMAGES : has
 
-    USER {
-      uuid id
-      string email
-      string password_hash
-      enum role
+    USERS {
+      uuid id PK
+      varchar name
+      varchar email UK
+      user_role role
+      user_status status
+      timestamptz email_verified_at
+      timestamptz created_at
+      timestamptz updated_at
     }
-    ANIMAL {
-      uuid id
-      string name
-      string species
-      string breed
-      string sex
-      string color
-      string size
-      string approximate_age
+    ANIMALS {
+      uuid id PK
+      varchar name
+      species species
+      varchar breed
+      animal_sex sex
+      varchar color
+      animal_size size
+      integer approximate_age
       text description
+      timestamptz created_at
+      timestamptz updated_at
     }
-    PUBLICATION {
-      uuid id
-      enum type
-      enum status
-      geography exact_location_private
-      geography public_location_approximate
-      datetime event_date
+    PUBLICATIONS {
+      uuid id PK
+      uuid user_id FK
+      uuid animal_id FK
+      publication_type type
+      varchar title
+      text description
+      publication_status status
+      timestamptz event_date
+      double latitude
+      double longitude
+      timestamptz created_at
+      timestamptz updated_at
+      timestamptz resolved_at
     }
-    PUBLICATION_IMAGE {
-      uuid id
-      string storage_key
-      int position
-    }
-    FAVORITE {
-      uuid user_id
-      uuid publication_id
-    }
-    REPORT {
-      uuid id
-      string reason
-      string status
-    }
-    SHELTER {
-      uuid id
-      string name
-    }
-    MATCH {
-      uuid id
-      decimal score
-      string status
+    PUBLICATION_IMAGES {
+      uuid id PK
+      uuid publication_id FK
+      varchar storage_key UK
+      integer position
+      timestamptz created_at
     }
 ```
 
-El diagrama es conceptual: tipos, nulabilidad y relaciones podrán refinarse mediante migraciones y ADR.
+`favorites`, `reports`, `shelters` y `matches` son futuros. No existen en el schema actual.
 
-## Entidades previstas
+## Decisiones de modelado
 
-- `User`: identidad y rol futuro `USER`, `SHELTER` o `ADMIN`.
-- `Animal`: descripción normalizada del animal; se decidirá si puede compartirse entre publicaciones.
-- `Publication`: tipo `LOST`, `FOUND` o `ADOPTION`; estado `ACTIVE`, `RESOLVED`, `ADOPTED` o `ARCHIVED` con transiciones válidas.
-- `PublicationImage`: referencias a objetos almacenados fuera de la BD y orden de presentación.
-- `Favorite`: relación única usuario-publicación.
-- `Report`: motivo, actor, estado y trazabilidad de moderación.
-- `Shelter`: datos públicos/verificados de una protectora y su relación con usuarios.
-- `Match`: candidatos `LOST ↔ FOUND`, puntuación, señales y decisión humana.
+### UUID
 
-## Geolocalización y privacidad
+Todas las claves primarias usan UUID v4 generado por PostgreSQL mediante `gen_random_uuid()`. PostgreSQL 17 lo incorpora sin activar una extensión adicional. El seed usa UUID fijos únicamente para ser idempotente.
 
-La ubicación exacta interna y la pública aproximada serán atributos distintos. El acceso a la exacta será restringido y auditado. La aproximación debe evitar inversión mediante consultas repetidas; su precisión dependerá del riesgo y densidad. PostGIS permitirá índices espaciales y consultas por distancia cuando se implemente.
+### Usuarios y email
 
-## Integridad y operación futuras
+`name` y `email` son obligatorios. El repository elimina espacios exteriores y convierte el email a lowercase. La base refuerza lowercase mediante `CHECK` y unicidad mediante índice único. No se usa `citext`, evitando una extensión innecesaria.
 
-- Claves UUID y timestamps con zona horaria, sujetos a validación en el diseño físico.
-- Constraints para enums, unicidad y relaciones; transacciones para cambios coordinados.
-- Queries parametrizadas desde repositories.
-- Migraciones versionadas, revisables y con estrategia de rollback/forward fix.
-- Seeds solo con datos sintéticos; nunca datos personales de producción.
-- Backups cifrados, restauraciones probadas y retención definida antes de producción.
+`password_hash` no existe aún: se añadirá junto con hashing, invariantes y migration del Milestone 4. El seed no contiene passwords ni un administrador operativo.
+
+### Enums
+
+Se usan enums PostgreSQL porque los conjuntos actuales son pequeños y forman invariantes estructurales:
+
+- roles: `USER`, `SHELTER`, `ADMIN`;
+- usuario: `ACTIVE`, `BLOCKED`;
+- especie: `DOG`, `CAT`, `OTHER`;
+- sexo: `MALE`, `FEMALE`, `UNKNOWN`;
+- tamaño: `SMALL`, `MEDIUM`, `LARGE`, `UNKNOWN`;
+- publicación: `LOST`, `FOUND`, `ADOPTION`;
+- estado: `ACTIVE`, `RESOLVED`, `ADOPTED`, `ARCHIVED`.
+
+Añadir valores requiere migration, lo que hace la evolución explícita.
+
+### Animales y publicaciones
+
+El nombre del animal es nullable porque un animal encontrado puede ser desconocido. Especie es obligatoria; raza, color, edad aproximada y descripción pueden faltar. `approximate_age` se expresa provisionalmente en meses y no puede ser negativa.
+
+Un animal puede aparecer en varias publicaciones a lo largo del tiempo. `event_date` representa el suceso relevante y no se confunde con `created_at`.
+
+### Ubicación
+
+`latitude` y `longitude` son coordenadas exactas internas temporales, nunca una respuesta pública automática. Deben existir juntas y respetar `[-90, 90]` y `[-180, 180]`. En el milestone geoespacial se incorporará PostGIS y una representación pública aproximada separada; la migración deberá conservar la distinción y minimizar precisión almacenada.
+
+### Imágenes
+
+PostgreSQL solo almacena un `storage_key` neutral, nunca binarios ni URLs de proveedor. `position >= 0`, la pareja `(publication_id, position)` es única y `storage_key` no se repite. El límite máximo de imágenes será una regla de aplicación porque depende del producto.
+
+## Timestamps
+
+Todos los timestamps usan `timestamptz` y se interpretan en UTC. La futura UI convertirá a zona local. `updated_at` se actualizará explícitamente en repositories/casos de uso; no se oculta en triggers en esta fase.
+
+## Foreign keys y borrado
+
+- `publications.user_id → users.id`: `RESTRICT`; una eliminación de cuenta no destruye silenciosamente historial y debe pasar por una política de privacidad/moderación.
+- `publications.animal_id → animals.id`: `RESTRICT`; evita eliminar un animal referenciado.
+- `publication_images.publication_id → publications.id`: `CASCADE`; una imagen es un registro subordinado sin significado independiente.
+
+No se aplica soft delete genérico. Usuarios y publicaciones ya tienen estados para bloqueo/archivo; el borrado y anonimización se diseñarán por requisito, no mediante una columna universal.
 
 ## Índices
 
-Cada índice futuro deberá responder a una query medida o a una constraint. Se priorizarán índices para claves foráneas, estados/filtros frecuentes y, posteriormente, GiST de PostGIS. Los índices vectoriales se decidirán únicamente con métricas del Milestone 14.
+- único `users.email`;
+- `publications.user_id` y `publications.animal_id` para joins/FK;
+- `publications.type`, `status`, `event_date` y `created_at` para filtros/orden previstos;
+- único `(publication_images.publication_id, position)`, que también cubre búsquedas por publicación;
+- único `publication_images.storage_key`.
 
-## pgvector
+No se añaden índices combinados sin queries y mediciones reales.
 
-Se evaluará en el Milestone 14. Un embedding se asociaría a una versión de imagen/modelo y nunca sustituiría la decisión humana. Dimensiones, índice, proveedor, coste y borrado derivado deberán quedar documentados antes de crear el schema.
+## Migrations
+
+La migration inicial es `apps/api/src/database/migrations/0000_blue_wolfsbane.sql`. Flujo:
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+Se revisa el SQL generado y no se usa `db push` como flujo principal.
+
+## Seed
+
+`npm run db:seed` inserta mediante `ON CONFLICT DO NOTHING` dos usuarios `USER` sin contraseña, tres animales, tres publicaciones y dos claves de imagen sintéticas. Es explícito, repetible y está bloqueado si `NODE_ENV=production`.
+
+## Desarrollo y tests
+
+La aplicación consume exclusivamente `DATABASE_URL`, ya apunte a Windows, Docker o cloud. Compose ofrece PostgreSQL 17 solo como alternativa local. `DATABASE_TEST_URL` debe ser distinta, terminar en `_test` y ejecutarse con `NODE_ENV=test`; los tests eliminan filas en orden de dependencias, pero nunca ejecutan `DROP` o `TRUNCATE`.
+
+## Evolución futura
+
+- PostGIS y ubicación pública aproximada: Milestone 7.
+- `favorites`, `reports`, `shelters` y `matches`: milestones posteriores.
+- pgvector y embeddings: Milestone 14, condicionado a evaluación técnica y de privacidad.
