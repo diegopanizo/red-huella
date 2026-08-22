@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Builds and test output
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+
+# Environment files (keep the documented template)
+.env
+.env.*
+!.env.example
+
+# Logs and local tooling
+*.log
+*.local
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
