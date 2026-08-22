@@ -1,5 +1,20 @@
 # API REST
 
+## Publicaciones implementadas
+
+| Método | Ruta                              | Acceso          | Descripción                                   |
+| ------ | --------------------------------- | --------------- | --------------------------------------------- |
+| POST   | `/api/v1/publications`            | sesión + Origin | Crea animal y publicación atómicamente; `201` |
+| GET    | `/api/v1/publications`            | público         | Lista paginada y filtrada                     |
+| GET    | `/api/v1/publications/mine`       | sesión          | Lista todas las publicaciones propias         |
+| GET    | `/api/v1/publications/:id`        | público         | Detalle no archivado                          |
+| PATCH  | `/api/v1/publications/:id`        | owner + Origin  | Edita publicación y animal atómicamente       |
+| PATCH  | `/api/v1/publications/:id/status` | owner + Origin  | Resuelve, adopta o archiva                    |
+
+Listado: `page=1`, `pageSize=20` (máximo 100), filtros `type`, `status`, `species` y orden `newest`, `oldest` o `eventDate`. Sin filtro de estado solo aparecen `ACTIVE`; `ARCHIVED` nunca aparece en el listado público. `/mine` incluye estados no públicos.
+
+El DTO contiene `id`, tipo, título, descripción, estado, fechas, ubicación provisional, animal, imágenes existentes y autor `{id,name,role}`. Nunca contiene email, password, sesión o `userId`. LOST/FOUND no aceptan fecha futura. Errores propios: `PUBLICATION_NOT_FOUND`, `PUBLICATION_FORBIDDEN`, `PUBLICATION_INVALID_STATUS_TRANSITION` y `PUBLICATION_VALIDATION_ERROR`.
+
 ## Autenticación implementada
 
 Todos los POST requieren `Origin` igual a `WEB_ORIGIN`. Registro y login establecen `red_huella_session` con `Path=/api/v1`, alcance suficiente para toda la API autenticada y menor que `/`; el cliente debe incluir credenciales. Ninguna respuesta expone hashes o tokens.
@@ -58,7 +73,7 @@ Formato de error implementado para fallos globales y rutas desconocidas:
 | ---------------------- | ----------- | ------------------------------------------------------------------ |
 | `/api/v1/auth`         | IMPLEMENTED | Registro, login, logout y usuario actual; recuperación planificada |
 | `/api/v1/users`        | PLANNED     | Perfil y derechos sobre datos personales                           |
-| `/api/v1/publications` | PLANNED     | Publicaciones, búsqueda, filtros y estados                         |
+| `/api/v1/publications` | IMPLEMENTED | CRUD acotado, filtros, ownership y estados; geografía pendiente    |
 | `/api/v1/animals`      | PLANNED     | Datos de animales asociados                                        |
 | `/api/v1/favorites`    | PLANNED     | Favoritos del usuario autenticado                                  |
 | `/api/v1/matches`      | PLANNED     | Posibles coincidencias y feedback                                  |
@@ -68,12 +83,11 @@ Formato de error implementado para fallos globales y rutas desconocidas:
 
 ## Borrador de recursos MVP
 
-Salvo los endpoints de auth ya documentados como implementados, estos endpoints son **PLANNED** y se concretarán por milestone:
+Salvo los endpoints de auth y publicaciones documentados como implementados, estos endpoints son **PLANNED** y se concretarán por milestone:
 
 - Recuperación de contraseña y verificación de email bajo auth.
 - `GET/PATCH /api/v1/users/me` y operación futura de eliminación.
-- `GET/POST /api/v1/publications`.
-- `GET/PATCH/DELETE /api/v1/publications/{publicationId}` con semántica de borrado por definir.
+- Búsqueda geográfica y eliminación física de publicaciones, si se justifica en un milestone futuro.
 - Operaciones de imágenes bajo una ruta y flujo aún por diseñar.
 - `GET/POST/DELETE /api/v1/favorites` o recurso anidado equivalente, pendiente de ADR de contrato.
 

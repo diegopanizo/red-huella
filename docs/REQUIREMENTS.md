@@ -6,6 +6,8 @@ Los requisitos describen comportamiento previsto y no implican implementación. 
 
 ## Functional Requirements
 
+Estado tras Milestone 5: `FR-003`, `FR-004`, `FR-005` y `FR-007` están **IMPLEMENTED** en backend y cubiertos por tests. `FR-007` cubre filtros no geográficos; la cercanía corresponde a `FR-008` y continúa pendiente. No se afirma UI implementada.
+
 | ID     | Prioridad | Requisito                                                                                                        | Criterio verificable                                                      |
 | ------ | --------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | FR-001 | MVP       | Una persona podrá registrarse e iniciar/cerrar sesión.                                                           | Flujos válidos e inválidos cubiertos por tests; sesión revocable.         |

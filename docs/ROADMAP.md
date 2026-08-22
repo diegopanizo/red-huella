@@ -28,11 +28,11 @@ Implementados cuatro tablas, migration, seed, constraints, índices, repositorie
 
 Registro, sesión opaca persistente, Argon2id, autorización base y tests de abuso. Recuperación y verificación de email quedan planificadas.
 
-## Milestone 5 — Publicaciones (siguiente)
+## Milestone 5 — Publicaciones (completado)
 
 Modelo y API para animales/publicaciones, estados, propiedad, validación y tests.
 
-## Milestone 6 — Frontend funcional
+## Milestone 6 — Frontend funcional (siguiente)
 
 Navegación, identidad y flujos de publicaciones accesibles y responsive conectados a la API.
 

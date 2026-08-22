@@ -10,11 +10,13 @@ import { requestId } from './middleware/request-id.js'
 import { requestLogger } from './middleware/request-logger.js'
 import { createHealthRouter } from './routes/health.routes.js'
 import { createAuthRouter } from './routes/auth.routes.js'
+import { createPublicationRouter } from './routes/publication.routes.js'
 import { HealthService } from './services/health.service.js'
 
 export interface AppDependencies {
   healthService?: HealthService
   authRouter?: express.Router
+  publicationRouter?: express.Router
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -36,6 +38,10 @@ export function createApp(dependencies: AppDependencies = {}) {
 
   app.use('/api/v1/health', createHealthRouter(healthService))
   app.use('/api/v1/auth', dependencies.authRouter ?? createAuthRouter())
+  app.use(
+    '/api/v1/publications',
+    dependencies.publicationRouter ?? createPublicationRouter(),
+  )
   app.use(notFound)
   app.use(errorHandler)
 

@@ -1,5 +1,11 @@
 # Base de datos
 
+## Operaciones funcionales de publicaciones
+
+El modelo existente `User 1—N Publication N—1 Animal` no cambia y este milestone no requiere migration. Crear animal/publicación y editar ambos son transacciones Drizzle: un fallo revierte todo y evita animales o cambios parciales. `updated_at` se asigna explícitamente al editar publicación/animal. Las imágenes existentes se leen por posición, pero no existe upload.
+
+`approximate_age` conserva la unidad definida en el modelo inicial: meses. La API limita el valor a 0–600 meses. `resolved_at` se establece para `RESOLVED`/`ADOPTED`; archivar lo mantiene null.
+
 ## Autenticación
 
 `users.password_hash` es nullable durante la transición para conservar usuarios seed previos y cuentas de desarrollo existentes sin credenciales; todo registro público escribe un hash Argon2id. No bloquea el Milestone 4. Se revisará convertirlo a `NOT NULL` cuando todos los usuarios funcionales requieran autenticación. `sessions` contiene UUID, FK `user_id` con cascade, `token_hash` SHA-256 único, expiración, creación, último uso y revocación. El token opaco nunca se persiste.

@@ -1,5 +1,11 @@
 # Arquitectura
 
+## Flujo de publicaciones
+
+`Authenticated Request → Controller/Zod → CreatePublicationService → Drizzle transaction → Animal + Publication → PostgreSQL`.
+
+Las actualizaciones compuestas siguen la misma transacción y actualizan `updated_at` desde aplicación. Para mutaciones: `request.auth.userId → comparación con publication.userId → operación autorizada`. Controllers no consultan DB ni deciden ownership.
+
 ## Flujo de autenticación
 
 `Browser → Controller/validación → Register/Login Service → User/Session Repository → PostgreSQL → cookie HttpOnly`.

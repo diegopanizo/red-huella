@@ -1,5 +1,15 @@
 # Política y estrategia de seguridad
 
+## Publicaciones implementadas en Milestone 5
+
+- Toda mutación exige sesión y Origin exacto contra `WEB_ORIGIN`.
+- El propietario procede exclusivamente de `request.auth.userId`; `userId` del body se rechaza.
+- La API devuelve 404 si no existe y 403 si existe pero pertenece a otro usuario.
+- DTOs allowlist excluyen email, password hash, sesión e identificadores internos de ownership.
+- Zod limita strings, enums, UUID, coordenadas, edad y paginación; no se aceptan columnas de orden arbitrarias.
+- Status solo cambia mediante el endpoint dedicado y su matriz de transiciones.
+- El body y las coordenadas exactas no se incluyen en logs.
+
 ## Autenticación implementada en Milestone 4
 
 - Contraseñas Argon2id (19 MiB, 2 iteraciones, paralelismo 1, salida 32 bytes), con comprobación futura de rehash.

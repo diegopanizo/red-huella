@@ -1,5 +1,11 @@
 # Changelog
 
+## Milestone 5
+
+- API backend de publicaciones con creación atómica de animal/publicación, lectura pública, listado paginado y publicaciones propias.
+- Edición transaccional, ownership backend, transiciones de estado, archivado lógico, DTO allowlist y protección Origin.
+- Pruebas unitarias, HTTP y PostgreSQL para filtros, seguridad, estados y rollback.
+
 ## Milestone 4
 
 - Añadidos registro, login, logout y `/me` con Argon2id y sesiones opacas PostgreSQL.

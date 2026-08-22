@@ -1,5 +1,9 @@
 # Privacidad
 
+## Ubicación provisional en publicaciones
+
+La API actual devuelve las coordenadas almacenadas sin aproximación. Esto es provisional y no constituye anonimización ni una garantía de privacidad. No deben introducirse datos reales sensibles antes del milestone geoespacial, que separará ubicación exacta interna de ubicación pública aproximada. Las coordenadas no se escriben en logs.
+
 ## Datos de autenticación
 
 Se minimizan a nombre, email normalizado, hash de contraseña y metadatos de sesión. El cliente solo recibe un token opaco en cookie HttpOnly; la base conserva su hash. No se registran credenciales ni cookies. La política operativa de retención/borrado de sesiones expiradas queda pendiente antes de producción.

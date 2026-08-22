@@ -4,6 +4,10 @@
 
 La API usa sesiones opacas revocables persistidas en PostgreSQL. El navegador recibe únicamente una cookie `HttpOnly`; no se guarda autenticación en `localStorage` ni `sessionStorage`. Registro, login, logout y usuario actual están disponibles bajo `/api/v1/auth`.
 
+## Publications backend
+
+El backend permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado con reglas explícitas y consultar las publicaciones propias. Ownership, paginación y filtros se aplican en servidor. Todavía no existe UI funcional de publicaciones, búsqueda geográfica ni upload.
+
 ## Descripción general
 
 Red Huella es un Trabajo de Fin de Máster en desarrollo. Propone una plataforma web geolocalizada para ayudar a particulares y protectoras a publicar y localizar animales perdidos, encontrados o en adopción. El objetivo es reducir la dispersión de avisos, facilitar búsquedas relevantes y construir un proyecto Full Stack mantenible, seguro y verificable que también pueda servir como portfolio profesional.

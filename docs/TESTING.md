@@ -1,5 +1,9 @@
 # Estrategia de testing
 
+## Publicaciones
+
+Tests unitarios cubren schemas, límites de paginación, DTO y matriz de estados. La suite PostgreSQL prueba los tres tipos, filtros, orden, paginación, lectura, dos usuarios con ownership, Origin, auth, edición compuesta, transiciones, `/mine` y rollback real de create/update.
+
 ## Cobertura de autenticación
 
 Vitest cubre Argon2id, tokens, expiración, cookies y schemas. La suite PostgreSQL separada verifica users/sessions, unicidad, expiración, revocación y el flujo HTTP completo registro → `/me` → logout → 401. También prueba escalada de rol, duplicados, Origin, credenciales genéricas y 429. Los safeguards de `_test` siguen siendo obligatorios.

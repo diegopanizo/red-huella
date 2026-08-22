@@ -1,5 +1,15 @@
 # Registro de decisiones arquitectónicas
 
+## ADR-019 — Ownership, transacciones y retirada de publicaciones
+
+**Status:** Accepted
+
+**Context:** Las mutaciones deben impedir acceso cruzado y los cambios publication/animal no pueden quedar parciales.
+
+**Decision:** Derivar owner solo de la sesión, responder 404 si no existe y 403 si existe pero pertenece a otro usuario, y ejecutar create/update compuesto en transacciones Drizzle. El borrado es archivado lógico mediante el endpoint de estado; no se expone DELETE físico. `ARCHIVED` se oculta públicamente y queda visible en `/mine`. `updated_at` se gestiona desde aplicación.
+
+**Consequences:** La política es explícita y testeable, conserva historial y evita huérfanos. Una futura moderación administrativa necesitará autorización separada. Las lecturas aún devuelven ubicación provisional exacta hasta el milestone geoespacial.
+
 ## ADR-018 — Sesiones opacas y seguridad de credenciales
 
 **Status:** Accepted
