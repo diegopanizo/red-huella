@@ -1,5 +1,15 @@
 # Changelog
 
+## Milestone 9 — completado
+
+- Añadido contacto voluntario por publicación mediante WhatsApp, teléfono y email, sin reutilizar automáticamente el email de acceso.
+- Incorporada `publication_contact_methods` mediante la migración `0004`, con E.164, email normalizado, unicidad por publicación/método y FK cascade.
+- Añadidos endpoints owner GET/PUT con ownership, Origin, locking transaccional, no-store y política de solo retirada en estados finales.
+- Añadida revelación autenticada bajo demanda para publicaciones `ACTIVE`, con autor activo, 404 uniforme, rate limiting por usuario/IP y respuestas privadas sin ETag.
+- Incorporada configuración frontend owner, reintentos independientes, retorno seguro desde login y enlaces validados para `wa.me`, `tel:` y `mailto:`.
+- Añadida limpieza de PII al ocultar, desmontar, cambiar de publicación o cerrar sesión; contacto continúa ausente de DTOs públicos, cards, listados, búsquedas y logs.
+- Documentadas las deudas de texto plano temporal, cifrado de backups/permisos mínimos, futura envelope encryption/KMS, rate limiter single-instance y advisories dev de `drizzle-kit`/`esbuild`; runtime sin vulnerabilidades conocidas en la auditoría de cierre.
+
 ## Milestone 8 — completado
 
 - Incorporados PostgreSQL 17 + PostGIS, `geography(Point,4326)` e índice GiST sobre `public_location` mediante la migración `0003`.

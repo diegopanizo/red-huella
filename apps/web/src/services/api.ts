@@ -3,6 +3,7 @@ import type {
   PublicationImage,
   PublicationList,
   ManagePublication,
+  PublicationContactSettings,
   User,
 } from '../types'
 
@@ -82,6 +83,22 @@ export const api = {
   managePublication: (id: string) =>
     requestJson<{ publication: ManagePublication }>(
       `/publications/${id}/manage`,
+    ),
+  getPublicationContactSettings: (id: string) =>
+    requestJson<{ contactSettings: PublicationContactSettings }>(
+      `/publications/${id}/contact-settings`,
+    ),
+  getPublicationContact: (id: string) =>
+    requestJson<{ contact: PublicationContactSettings }>(
+      `/publications/${id}/contact`,
+    ),
+  replacePublicationContactSettings: (
+    id: string,
+    body: PublicationContactSettings,
+  ) =>
+    requestJson<{ contactSettings: PublicationContactSettings }>(
+      `/publications/${id}/contact-settings`,
+      { method: 'PUT', body: JSON.stringify(body) },
     ),
   createPublication: (body: unknown) =>
     requestJson<{ publication: Publication }>('/publications', {

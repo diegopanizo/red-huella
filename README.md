@@ -6,11 +6,11 @@ La API usa sesiones opacas revocables persistidas en PostgreSQL. El navegador re
 
 ## Publications backend
 
-La aplicación permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado y gestionar hasta seis imágenes normalizadas por publicación. Ownership, estados, paginación y filtros se aplican en servidor. El Bloque 4 incorpora selector, previews, galería, thumbnails y gestión accesible de imágenes; el cierre final del Milestone 7 sigue pendiente.
+La aplicación permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado y gestionar hasta seis imágenes normalizadas por publicación. Ownership, estados, paginación y filtros se aplican en servidor.
 
 ## Frontend funcional
 
-La web incluye rutas públicas de exploración, detalle, login y registro, además de creación, edición y publicaciones propias protegidas por estado de sesión. Configura `VITE_API_URL` desde `apps/web/.env.example`; es una URL pública, nunca un secreto. La sesión procede de `/auth/me` y la cookie HttpOnly no se lee ni almacena desde JavaScript.
+La web incluye rutas públicas de exploración, detalle, login y registro, además de creación, edición y publicaciones propias protegidas por estado de sesión. Los owners pueden configurar WhatsApp, teléfono o email por publicación; en el detalle `ACTIVE`, usuarios autenticados pueden revelarlos únicamente mediante click explícito. Configura `VITE_API_URL` desde `apps/web/.env.example`; es una URL pública, nunca un secreto. La sesión procede de `/auth/me` y la cookie HttpOnly no se lee ni almacena desde JavaScript.
 
 ## Descripción general
 
@@ -20,9 +20,9 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 8 completado (geolocalización y PostGIS).**
+**En desarrollo — Milestone 9 completado (contacto entre usuarios).**
 
-La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía y mapas aproximados. La API Express usa PostgreSQL 17 + PostGIS, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
+La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía, mapas aproximados y contacto autenticado por publicación mediante WhatsApp, teléfono o email. No implementa chat interno ni notificaciones. La API Express usa PostgreSQL 17 + PostGIS, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
 
 ## Stack tecnológico
 
@@ -49,7 +49,7 @@ Se mantendrá un monorepo con aplicaciones separadas y código compartido explí
 
 ### MVP
 
-Registro, login, perfil, publicaciones de animales perdidos, encontrados y en adopción, imágenes, búsqueda, filtros, ubicación, mapa y favoritos.
+Registro, login, perfil, publicaciones de animales perdidos, encontrados y en adopción, imágenes, búsqueda, filtros, ubicación, mapa, contacto por publicación y favoritos.
 
 ### Futuras
 
@@ -143,7 +143,7 @@ El flujo principal usa migrations versionadas, nunca `db push`. `db:seed` añade
 npm run test:db
 ```
 
-El comando requiere `NODE_ENV=test`, `DATABASE_TEST_URL` diferente de `DATABASE_URL` y una base cuyo nombre termine en `_test`. Aplica migrations y limpia únicamente las cuatro tablas de esa base entre pruebas.
+El comando requiere `NODE_ENV=test`, `DATABASE_TEST_URL` diferente de `DATABASE_URL` y una base cuyo nombre termine en `_test`. Aplica migrations y limpia exclusivamente las tablas conocidas de esa base de test entre pruebas.
 
 ## Estructura del proyecto
 
@@ -164,7 +164,7 @@ red-huella/
 
 ## Testing
 
-Existen tests de comportamiento frontend para autenticación, publicaciones e imágenes, además de suites unitarias, HTTP y PostgreSQL de la API. La estrategia completa está en [docs/TESTING.md](docs/TESTING.md).
+Existen tests de comportamiento frontend para autenticación, publicaciones, imágenes, geolocalización y contacto, además de suites unitarias, HTTP y PostgreSQL de la API. La estrategia completa está en [docs/TESTING.md](docs/TESTING.md).
 
 ## Calidad
 

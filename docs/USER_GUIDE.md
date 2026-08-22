@@ -10,6 +10,12 @@
 6. Desde el detalle propio puedes **Editar**, resolver/adoptar según el tipo o archivar, con confirmación previa. También puedes añadir imágenes, eliminarlas y cambiar su orden; posición uno es la principal. En una publicación archivada solo se permite eliminar.
 7. **Salir** revoca la sesión en backend y limpia el estado de usuario del frontend.
 
+Al crear o editar puedes habilitar WhatsApp, teléfono o email para esa publicación. Ninguno se activa por defecto y el email de acceso no se copia automáticamente. Los teléfonos requieren prefijo internacional (`+34…`); se admiten espacios y guiones. **Usar el mismo número que Teléfono** hace una copia puntual a WhatsApp, tras la cual ambos valores son independientes. En publicaciones finalizadas o archivadas solo puedes retirar métodos existentes, no añadirlos ni modificarlos.
+
+Estos datos se configuran por publicación y solo se compartirán con usuarios que hayan iniciado sesión. Desactivar un método lo elimina.
+
+En el detalle de una publicación activa, **Ver opciones de contacto** solicita los métodos únicamente al pulsarlo. Si no tienes sesión, se abre el login y después vuelves al detalle, pero deberás pulsar de nuevo para revelar los datos. WhatsApp, teléfono y email aparecen solo cuando están configurados. **Ocultar datos de contacto** los retira de pantalla y de la caché privada del navegador.
+
 Los listados muestran el thumbnail principal o un placeholder. El detalle permite elegir imágenes de la galería mediante botones y teclado. Si la publicación se crea pero falla el upload, se informa del éxito parcial y puedes reintentar las imágenes sin duplicar el aviso o abrir su detalle.
 
 **Estado: aplicación en desarrollo.**

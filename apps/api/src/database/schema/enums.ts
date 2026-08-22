@@ -12,6 +12,11 @@ export const publicationStatusValues = [
   'ADOPTED',
   'ARCHIVED',
 ] as const
+export const publicationContactMethodValues = [
+  'WHATSAPP',
+  'PHONE',
+  'EMAIL',
+] as const
 
 export type UserRole = (typeof userRoleValues)[number]
 export type UserStatus = (typeof userStatusValues)[number]
@@ -20,6 +25,8 @@ export type AnimalSex = (typeof animalSexValues)[number]
 export type AnimalSize = (typeof animalSizeValues)[number]
 export type PublicationType = (typeof publicationTypeValues)[number]
 export type PublicationStatus = (typeof publicationStatusValues)[number]
+export type PublicationContactMethodType =
+  (typeof publicationContactMethodValues)[number]
 
 export const userRoleEnum = pgEnum('user_role', userRoleValues)
 export const userStatusEnum = pgEnum('user_status', userStatusValues)
@@ -33,4 +40,8 @@ export const publicationTypeEnum = pgEnum(
 export const publicationStatusEnum = pgEnum(
   'publication_status',
   publicationStatusValues,
+)
+export const publicationContactMethodEnum = pgEnum(
+  'publication_contact_method',
+  publicationContactMethodValues,
 )

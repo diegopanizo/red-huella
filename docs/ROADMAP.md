@@ -46,35 +46,41 @@ Implementados PostgreSQL 17 + PostGIS, modelo exacto/público, política de priv
 
 > Cambio de orden aprobado al iniciar el Milestone 7: el roadmap anterior situaba geolocalización en el Milestone 7 e imágenes en el 8. Se adelantó imágenes para completar las publicaciones antes de incorporar capacidades geoespaciales; el cambio se registra en ADR-021 y no implica que el antiguo Milestone 7 se haya implementado.
 
-## Milestone 9 — Favoritos
+## Milestone 9 — Contacto entre usuarios (completado)
+
+Contacto voluntario por publicación mediante WhatsApp, teléfono y email, aislado de los DTO públicos. Completados decisión/persistencia, backend owner, consulta protegida con rate limiting, configuración owner y revelación explícita desde el detalle autenticado, con retorno seguro desde login y limpieza de PII en cliente.
+
+> Cambio de orden aprobado al iniciar el Milestone 9: este número estaba reservado anteriormente a Favoritos. Contacto se prioriza para completar el ciclo de una publicación; Favoritos y los milestones futuros se desplazan una posición sin afirmar que hayan sido implementados.
+
+## Milestone 10 — Favoritos
 
 Persistencia, API y UI de favoritos con autorización.
 
-## Milestone 10 — Roles y moderación
+## Milestone 11 — Roles y moderación
 
 Protectoras, reportes, roles y operaciones administrativas auditables.
 
-## Milestone 11 — Matching tradicional
+## Milestone 12 — Matching tradicional
 
 Servicio independiente, score explicable con especie, raza, color, tamaño, sexo, distancia y fecha, más evaluación y tests.
 
-## Milestone 12 — Testing E2E
+## Milestone 13 — Testing E2E
 
 Playwright, datos aislados y recorridos críticos automatizados.
 
-## Milestone 13 — Auditoría de seguridad
+## Milestone 14 — Auditoría de seguridad
 
 Threat model actualizado, revisión OWASP, dependencias, permisos, configuración y pruebas de abuso.
 
-## Milestone 14 — Matching visual
+## Milestone 15 — Matching visual
 
 Evaluación ética/técnica, proveedor de embeddings desacoplado, pgvector, métricas y comunicación de incertidumbre.
 
-## Milestone 15 — Deployment
+## Milestone 16 — Deployment
 
 Infraestructura, dominio, HTTPS, migraciones, backups, observabilidad y runbook.
 
-## Milestone 16 — Preparación final TFM
+## Milestone 17 — Preparación final TFM
 
 - README definitivo y capturas.
 - Slides y URL pública.

@@ -1,5 +1,27 @@
 # Arquitectura
 
+## Contacto — Milestone 9, Bloques 1 a 5
+
+ADR-023 introduce un módulo separado del aggregate público. `PublicationContactRepository` encapsula la tabla de PII por publicación y `DrizzlePublicationContactRepository` aplica reemplazo completo transaccional. La validación pura acepta E.164 canónico y normaliza emails antes de persistir.
+
+```mermaid
+flowchart LR
+    ContactServices[Owner and public contact services] --> CR[PublicationContactRepository]
+    CR --> DCR[DrizzlePublicationContactRepository]
+    DCR --> PCM[(publication_contact_methods)]
+    PCM -->|FK ownership| P[(publications)]
+```
+
+Los aggregates y repositories públicos no dependen de esta tabla. El Bloque 2 añade controller y casos de uso separados para configuración owner. El Bloque 3 incorpora una revelación autenticada independiente y bajo demanda.
+
+`GET /contact-settings` resuelve publicación y ownership antes de leer PII. `PUT /contact-settings` delega en una operación repository que bloquea `publications` con `SELECT ... FOR UPDATE`, lee la colección, aplica la política recibida y reemplaza dentro de la misma transacción. Así el estado que autoriza la escritura no puede cambiar a mitad de la operación. En estados finales solo acepta un subconjunto de pares tipo/valor idénticos.
+
+`GET /contact` usa una query mínima con joins de publicación, autor y contacto. Solo selecciona estados y pares tipo/valor; no lee aggregates, email de login, ubicación, descripción o imágenes. El service convierte inexistencia, estado final, autor bloqueado y colección vacía en un único error. Dos limiters en memoria se ejecutan tras autenticación: bucket por usuario y bucket adicional por IP.
+
+El frontend owner encapsula WhatsApp, teléfono y email en `ContactSettingsFields`, con React Hook Form/Zod y normalización previa al transporte. En alta conserva el orden `create JSON → ID → contacto/imágenes`; los dos pasos secundarios mantienen errores y reintentos independientes, por lo que nunca recrean la publicación ni repiten un upload correcto. En edición carga `manage` y `contact-settings` en paralelo con una query privada de `staleTime: 0`, eliminada al abandonar la pantalla y en logout. Los estados finales presentan valores de solo lectura y permiten únicamente retirar pares originales.
+
+`PublicationContactPanel` consume `/contact` exclusivamente tras click. Su query nace deshabilitada, usa `staleTime: 0`, `gcTime: 0` y una key formada solo por recurso e ID. Ocultar, cambiar de publicación, desmontar o cerrar sesión elimina la PII de TanStack Query. Los helpers puros construyen exclusivamente `https://wa.me`, `tel:` y `mailto:` después de validación defensiva; los parámetros con texto se codifican mediante `URLSearchParams`.
+
 ## Flujo frontend
 
 `Page/feature → TanStack Query o formulario → cliente API central → fetch credentials: include → Express API`.

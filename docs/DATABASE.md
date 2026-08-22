@@ -130,6 +130,16 @@ Las columnas añadidas son nullable para aceptar filas legacy sin metadatos. Los
 
 `storage_deletion_jobs` es exclusivamente una outbox pequeña para borrar objetos: key, intentos, próximo intento, último error sanitizado, creación y finalización. No tiene FK porque debe sobrevivir al metadato eliminado. Un índice por finalización/próximo intento soporta el consumo de pendientes. Delete elimina metadata, compacta posiciones y crea jobs para display/thumbnail dentro de una única transacción; el servicio intenta procesarlos tras commit y deja los fallidos pendientes. No existe cron ni framework genérico de workers.
 
+### Métodos de contacto por publicación
+
+`0004_ancient_blue_blade.sql` crea el enum `publication_contact_method` (`WHATSAPP`, `PHONE`, `EMAIL`) y la tabla subordinada `publication_contact_methods`. Cada fila contiene UUID, `publication_id`, método, valor y timestamps UTC. La FK usa `ON DELETE CASCADE`; `(publication_id, method)` es único y cubre las lecturas por publicación. No existen `user_id`, `enabled` ni índice sobre `value`.
+
+Ausencia de fila significa método deshabilitado y `replaceAll([])` elimina físicamente la configuración. El repository reemplaza todas las filas en una transacción y devuelve el orden determinista `WHATSAPP`, `PHONE`, `EMAIL`.
+
+La base exige valor trimmed/no vacío, email de hasta 254 caracteres y teléfono/WhatsApp en E.164 `^[+][1-9][0-9]{7,14}$`. La validación sintáctica completa de email permanece en aplicación. Los valores son snapshots: no existe vínculo ni copia automática desde `users.email`.
+
+Los datos se almacenan inicialmente en texto normal para poder revelarlos en el futuro flujo autorizado. No se hashean porque deben ser recuperables. Cifrado de campo/envelope encryption y gestión externa de claves quedan como revisión obligatoria antes de producción real.
+
 ## Timestamps
 
 Todos los timestamps usan `timestamptz` y se interpretan en UTC. La futura UI convertirá a zona local. `updated_at` se actualizará explícitamente en repositories/casos de uso; no se oculta en triggers en esta fase.
@@ -154,7 +164,7 @@ No se añaden índices combinados sin queries y mediciones reales.
 
 ## Migrations
 
-Las migrations aplicadas no se modifican. `0002_abandoned_raider.sql` añade los metadatos de imagen y `storage_deletion_jobs`. Flujo:
+Las migrations aplicadas no se modifican. `0002_abandoned_raider.sql` añade los metadatos de imagen y `storage_deletion_jobs`. `0004_ancient_blue_blade.sql` añade exclusivamente el enum y tabla de contacto. Flujo:
 
 ```bash
 npm run db:generate

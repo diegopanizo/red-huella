@@ -63,3 +63,60 @@ describe('API de imágenes', () => {
     )
   })
 })
+
+describe('API owner de contacto', () => {
+  it('lee y reemplaza ajustes con sesión y JSON', async () => {
+    const fetchMock = vi.fn(
+      (input: RequestInfo | URL, options?: RequestInit) => {
+        void input
+        void options
+        return Promise.resolve(
+          new Response(JSON.stringify({ contactSettings: { methods: [] } }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.getPublicationContactSettings('publication-id')
+    await api.replacePublicationContactSettings('publication-id', {
+      methods: [{ type: 'PHONE', value: '+34600111222' }],
+    })
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'http://localhost:3000/api/v1/publications/publication-id/contact-settings',
+    )
+    expect(fetchMock.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({
+        method: 'PUT',
+        credentials: 'include',
+        body: JSON.stringify({
+          methods: [{ type: 'PHONE', value: '+34600111222' }],
+        }),
+      }),
+    )
+  })
+})
+
+describe('API pública protegida de contacto', () => {
+  it('consulta el recurso separado con credentials', async () => {
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ contact: { methods: [] } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await api.getPublicationContact('publication-id')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'http://localhost:3000/api/v1/publications/publication-id/contact',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+  })
+})

@@ -6,6 +6,14 @@ export type User = {
 }
 export type PublicationType = 'LOST' | 'FOUND' | 'ADOPTION'
 export type PublicationStatus = 'ACTIVE' | 'RESOLVED' | 'ADOPTED' | 'ARCHIVED'
+export type ContactMethodType = 'WHATSAPP' | 'PHONE' | 'EMAIL'
+export type PublicationContactMethod = {
+  type: ContactMethodType
+  value: string
+}
+export type PublicationContactSettings = {
+  methods: PublicationContactMethod[]
+}
 export type Location = { latitude: number; longitude: number }
 export type PublicLocation = Location & { radiusMeters: number }
 export type PublicationImage = {

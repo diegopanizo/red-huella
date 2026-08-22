@@ -2,15 +2,18 @@
 
 ## Publicaciones implementadas
 
-| Método | Ruta                              | Acceso          | Descripción                                   |
-| ------ | --------------------------------- | --------------- | --------------------------------------------- |
-| POST   | `/api/v1/publications`            | sesión + Origin | Crea animal y publicación atómicamente; `201` |
-| GET    | `/api/v1/publications`            | público         | Lista paginada y filtrada                     |
-| GET    | `/api/v1/publications/mine`       | sesión          | Lista todas las publicaciones propias         |
-| GET    | `/api/v1/publications/:id/manage` | owner           | Datos editables con ubicación exacta privada  |
-| GET    | `/api/v1/publications/:id`        | público         | Detalle no archivado                          |
-| PATCH  | `/api/v1/publications/:id`        | owner + Origin  | Edita publicación y animal atómicamente       |
-| PATCH  | `/api/v1/publications/:id/status` | owner + Origin  | Resuelve, adopta o archiva                    |
+| Método | Ruta                                        | Acceso          | Descripción                                    |
+| ------ | ------------------------------------------- | --------------- | ---------------------------------------------- |
+| POST   | `/api/v1/publications`                      | sesión + Origin | Crea animal y publicación atómicamente; `201`  |
+| GET    | `/api/v1/publications`                      | público         | Lista paginada y filtrada                      |
+| GET    | `/api/v1/publications/mine`                 | sesión          | Lista todas las publicaciones propias          |
+| GET    | `/api/v1/publications/:id/manage`           | owner           | Datos editables con ubicación exacta privada   |
+| GET    | `/api/v1/publications/:id/contact-settings` | owner           | Lee contacto configurado; cualquier estado     |
+| GET    | `/api/v1/publications/:id/contact`          | sesión          | Revela contacto si publicación y autor activos |
+| GET    | `/api/v1/publications/:id`                  | público         | Detalle no archivado                           |
+| PUT    | `/api/v1/publications/:id/contact-settings` | owner + Origin  | Reemplaza la colección de contacto             |
+| PATCH  | `/api/v1/publications/:id`                  | owner + Origin  | Edita publicación y animal atómicamente        |
+| PATCH  | `/api/v1/publications/:id/status`           | owner + Origin  | Resuelve, adopta o archiva                     |
 
 Listado: `page=1`, `pageSize=20` (máximo 100), filtros `type`, `status`, `species` y orden `newest`, `oldest`, `eventDate` o `distance`. Sin filtro de estado solo aparecen `ACTIVE`; `ARCHIVED` nunca aparece en el listado público. `/mine` incluye estados no públicos.
 
@@ -21,6 +24,54 @@ El DTO público contiene `publicLocation {latitude,longitude,radiusMeters}` o `n
 El PATCH permite cambiar `type`. La política se reaplica al tipo final dentro de la actualización atómica. LOST/FOUND → ADOPTION elimina exacta; ADOPTION → LOST/FOUND requiere una nueva ubicación si se omite `location`, aunque `location: null` permite expresar deliberadamente una publicación sin ubicación.
 
 El cliente web tipa `publicLocation` como `{ latitude, longitude, radiusMeters }` y el resultado owner como el DTO público más `exactLocation: { latitude, longitude } | null`. En PATCH omite `location` si no cambió, envía el punto solo al modificarlo y envía `null` al quitarlo.
+
+### Configuración owner de contacto
+
+`GET /api/v1/publications/:id/contact-settings` exige sesión y ownership, pero permite leer en `ACTIVE`, `RESOLVED`, `ADOPTED` y `ARCHIVED`. Devuelve exclusivamente:
+
+```json
+{
+  "contactSettings": {
+    "methods": [{ "type": "WHATSAPP", "value": "+34600111222" }]
+  }
+}
+```
+
+Sin métodos devuelve `methods: []`. No incluye IDs de fila/publicación/usuario, timestamps ni email de login.
+
+`PUT /api/v1/publications/:id/contact-settings` exige Origin confiable, sesión y ownership. Su body estricto reemplaza toda la colección:
+
+```json
+{
+  "methods": [
+    { "type": "PHONE", "value": "+34911111222" },
+    { "type": "EMAIL", "value": "contacto@example.com" }
+  ]
+}
+```
+
+`methods: []` elimina todo. En `ACTIVE` se puede añadir, modificar o retirar. En `RESOLVED`, `ADOPTED` y `ARCHIVED` solo se permiten subconjuntos exactos de la configuración actual: conservar valores, retirar algunos o retirar todos. Añadir, cambiar un valor o sustituir un tipo devuelve `409 CONTACT_SETTINGS_READ_ONLY_FOR_STATUS`.
+
+Ambas respuestas exitosas usan `Cache-Control: private, no-store`, `Pragma: no-cache` y no emiten ETag. Errores: 400 payload inválido, 401 anónimo, 403 cross-owner/Origin, 404 inexistente, 409 política de estado y 503 persistencia no disponible.
+
+### Consulta protegida de contacto
+
+`GET /api/v1/publications/:id/contact` exige sesión de un usuario `ACTIVE`. Solo responde si la publicación está `ACTIVE`, su autor está `ACTIVE` y existe al menos un método. El owner no recibe excepciones para estados finales.
+
+```json
+{
+  "contact": {
+    "methods": [
+      { "type": "WHATSAPP", "value": "+34600111222" },
+      { "type": "EMAIL", "value": "contacto@example.com" }
+    ]
+  }
+}
+```
+
+No incluye IDs, usuario, email de login, timestamps, ubicación, descripción ni estado. Publicación inexistente/no activa, autor bloqueado y colección vacía producen el mismo `404 CONTACT_NOT_AVAILABLE`. La respuesta usa `Cache-Control: private, no-store`, `Pragma: no-cache` y no emite ETag.
+
+El límite inicial es 30 consultas por usuario y 100 por IP cada 15 minutos; superar cualquiera devuelve `429 CONTACT_RATE_LIMITED`. El store actual es memoria local por proceso y deberá sustituirse por uno compartido si producción usa varias instancias. Este endpoint no forma parte de cards/listados; el frontend lo solicita solo bajo acción explícita del usuario y elimina la PII de caché al ocultar, desmontar, cambiar de publicación o cerrar sesión.
 
 ## Autenticación implementada
 

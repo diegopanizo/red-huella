@@ -110,6 +110,20 @@ La API geográfica implementada valida el trío de búsqueda y radios 500–100.
 
 La búsqueda cercana del navegador solicita geolocalización solo tras un click, conserva el centro en memoria y lo descarta al desactivar la búsqueda. No usa Web Storage ni añade coordenadas a analytics o logs. `PublicLocationMap` acepta exclusivamente el DTO público aproximado.
 
+## Contacto por publicación
+
+El Bloque 1 del Milestone 9 persiste contacto únicamente en una tabla separada, sin índices por valor ni selección desde aggregates públicos. E.164, email, unicidad por método, trim y colección máxima se validan en aplicación/base; el reemplazo completo es transaccional y retirar un método elimina su fila. No se reutiliza `users.email`.
+
+Teléfonos y emails están inicialmente en texto normal y no pueden escribirse en logs, errores o métricas. La filtración de PostgreSQL/backups es un riesgo documentado; cifrado de backups, permisos mínimos y posible envelope encryption son requisitos de revisión antes de producción.
+
+La configuración owner está implementada con sesión, ownership y Origin en PUT. GET/PUT responden `Cache-Control: private, no-store`, `Pragma: no-cache` y sin ETag. Un lock `FOR UPDATE` mantiene coherentes estado, colección actual y reemplazo: `ACTIVE` permite cambios; estados finales solo retirada exacta. Los errores y logs no contienen values.
+
+La revelación protegida está implementada en `GET /publications/:id/contact`: exige usuario autenticado activo, publicación y autor activos, y métodos existentes. Una query allowlist evita cargar otros datos. Inexistencia, estado final, autor bloqueado y ausencia de métodos devuelven el mismo `404 CONTACT_NOT_AVAILABLE`. Owner no tiene bypass.
+
+Se aplican dos buckets de 15 minutos: 30 por usuario y 100 por IP, con `429 CONTACT_RATE_LIMITED`. Son stores en memoria por proceso; despliegue multiinstancia requerirá almacenamiento distribuido. Éxito y errores posteriores a autenticación llevan `private, no-store`/`no-cache`; el 200 no emite ETag. El logger conserva metadata de request, nunca values ni response body.
+
+El retorno tras login acepta exclusivamente rutas internas sanitizadas. Rechaza URLs absolutas, rutas `//`, esquemas arbitrarios y retornos a login/registro para evitar open redirects y bucles. La UI reconstruye enlaces de contacto desde valores validados con esquemas fijos (`https://wa.me`, `tel:` y `mailto:`); nunca representa una URI arbitraria recibida. Los parámetros con texto se codifican y la PII revelada se elimina de TanStack Query al ocultar, desmontar, cambiar de publicación o cerrar sesión.
+
 ## Logs y errores
 
 Se usarán logs estructurados con identificadores de correlación y redacción de datos sensibles. No incluirán contraseñas, tokens, cookies, coordenadas exactas ni imágenes. Los clientes recibirán errores estables y no stack traces.
@@ -118,4 +132,4 @@ Se usarán logs estructurados con identificadores de correlación y redacción d
 
 Las vulnerabilidades no deben publicarse en issues abiertos. Hasta definir un canal privado del proyecto, contactar directamente con la persona responsable del repositorio. El procedimiento y tiempos de respuesta se concretarán antes de hacer público el producto.
 
-La auditoría del Milestone 2 detectó cuatro avisos moderados en dependencias de desarrollo transitivas de `drizzle-kit`, originados por una versión antigua de `esbuild`. La corrección automática propuesta rebajaría Drizzle Kit con un cambio mayor, por lo que no se aplicó sin validación. Drizzle Studio no debe exponerse a redes no confiables; el riesgo se revisará al actualizar el toolkit.
+La auditoría general de cierre del Milestone 9 mantiene cuatro avisos moderados en dependencias de desarrollo transitivas de `drizzle-kit`, originados por una versión antigua de `esbuild`. `npm audit --omit=dev` devuelve cero vulnerabilidades de runtime. La corrección automática propuesta rebajaría Drizzle Kit con un cambio mayor, por lo que no se aplicó sin validación. Drizzle Studio no debe exponerse a redes no confiables; el riesgo se revisará al actualizar el toolkit.

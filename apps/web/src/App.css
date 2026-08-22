@@ -545,6 +545,69 @@ button.danger {
 .partial-success p {
   margin: 0.4rem 0;
 }
+.contact-settings > p {
+  margin: 0.25rem 0;
+  color: var(--muted);
+}
+.contact-method {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line);
+}
+.contact-method > div {
+  display: grid;
+  gap: 0.4rem;
+}
+.contact-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+}
+.contact-toggle input {
+  width: auto;
+}
+.field-error {
+  margin: 0;
+  color: #782f24;
+  font-size: 0.9rem;
+}
+.contact-panel {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+  padding: 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #f5f8f6;
+}
+.contact-panel h2,
+.contact-panel p {
+  margin: 0;
+}
+.contact-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+.contact-option {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  background: #fff;
+  overflow-wrap: anywhere;
+}
+.contact-option .button {
+  text-align: center;
+}
+.contact-error {
+  display: grid;
+  gap: 0.6rem;
+}
 .secondary-link {
   color: var(--green);
   background: #e9f2ed;

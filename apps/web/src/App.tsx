@@ -15,6 +15,16 @@ import {
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useAuth } from './features/auth/AuthProvider'
+import { ContactSettingsFields } from './features/contacts/ContactSettingsFields'
+import { PublicationContactPanel } from './features/contacts/PublicationContactPanel'
+import { sanitizeReturnTo } from './features/contacts/contact-links'
+import {
+  contactSettingsFormSchema,
+  emptyContactSettings,
+  fromContactMethods,
+  toContactMethods,
+  type ContactSettingsFieldsValue,
+} from './features/contacts/contact-settings'
 import {
   ImagePicker,
   ImagePlaceholder,
@@ -25,7 +35,12 @@ import { usePendingImages } from './features/images/usePendingImages'
 import { LocationPicker } from './features/locations/LocationPicker'
 import { PublicLocationMap } from './features/locations/PublicLocationMap'
 import { api, ApiError, resolveApiAssetUrl } from './services/api'
-import type { Publication, PublicationStatus, PublicationType } from './types'
+import type {
+  ContactMethodType,
+  Publication,
+  PublicationStatus,
+  PublicationType,
+} from './types'
 import './App.css'
 
 const labels = {
@@ -507,6 +522,8 @@ function Field({
 function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   const auth = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const returnTo = sanitizeReturnTo(searchParams.get('returnTo'))
   const [serverError, setServerError] = React.useState<unknown>()
   const {
     register,
@@ -520,7 +537,7 @@ function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         await auth.register(values.name ?? '', values.email, values.password)
       else await auth.login(values.email, values.password)
       reset()
-      navigate('/')
+      navigate(returnTo, { replace: true })
     } catch (error) {
       setServerError(error)
     }
@@ -727,6 +744,11 @@ function Detail() {
             </div>
           )}
           <Alert error={status.error} />
+          <PublicationContactPanel
+            publicationId={item.id}
+            publicationStatus={item.status}
+            {...(item.animal.name ? { animalName: item.animal.name } : {})}
+          />
         </div>
       </div>
       {owner && <OwnerImageManager publication={item} />}
@@ -740,6 +762,10 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
   const auth = useAuth()
   const client = useQueryClient()
   const pendingImages = usePendingImages()
+  const contactForm = useForm<ContactSettingsFieldsValue>({
+    resolver: zodResolver(contactSettingsFormSchema),
+    defaultValues: emptyContactSettings,
+  })
   const [publicationType, setPublicationType] =
     React.useState<PublicationType>('LOST')
   const locationForm = useForm<PublicationLocationFields>({
@@ -753,13 +779,28 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
   >('unchanged')
   const [locationError, setLocationError] = React.useState<string>()
   const initializedPublication = React.useRef<string | undefined>(undefined)
+  const initializedContact = React.useRef<string | undefined>(undefined)
   const [createdPublicationId, setCreatedPublicationId] =
     React.useState<string>()
+  const [contactSaveError, setContactSaveError] = React.useState<unknown>()
+  const [imageUploadError, setImageUploadError] = React.useState<unknown>()
+  const desiredContactMethods = React.useRef<
+    ReturnType<typeof toContactMethods>
+  >([])
+  const [contactRetryNeeded, setContactRetryNeeded] = React.useState(false)
+  const [imageRetryNeeded, setImageRetryNeeded] = React.useState(false)
   const existing = useQuery({
     queryKey: ['publication-manage', id],
     queryFn: () => api.managePublication(id),
     enabled: edit,
     retry: false,
+  })
+  const contactSettings = useQuery({
+    queryKey: ['contact-settings', id],
+    queryFn: () => api.getPublicationContactSettings(id),
+    enabled: edit,
+    retry: false,
+    staleTime: 0,
   })
   React.useEffect(() => {
     const item = existing.data?.publication
@@ -771,23 +812,66 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
     })
     setLocationIntent('unchanged')
   }, [existing.data, locationForm])
+  React.useEffect(() => {
+    const settings = contactSettings.data?.contactSettings
+    if (!settings || initializedContact.current === id) return
+    initializedContact.current = id
+    contactForm.reset(fromContactMethods(settings.methods))
+  }, [contactForm, contactSettings.data, id])
+  React.useEffect(
+    () => () => {
+      if (edit) client.removeQueries({ queryKey: ['contact-settings', id] })
+    },
+    [client, edit, id],
+  )
   const mutation = useMutation({
-    mutationFn: async (body: unknown) => {
-      if (edit) return api.updatePublication(id, body)
+    mutationFn: async ({
+      body,
+      methods,
+    }: {
+      body: unknown
+      methods: ReturnType<typeof toContactMethods>
+    }) => {
+      if (edit) {
+        const [updated] = await Promise.all([
+          api.updatePublication(id, body),
+          api.replacePublicationContactSettings(id, { methods }),
+        ])
+        return { ...updated, complete: true }
+      }
       const created = await api.createPublication(body)
       setCreatedPublicationId(created.publication.id)
-      if (pendingImages.images.length > 0)
-        await api.uploadPublicationImages(
-          created.publication.id,
-          pendingImages.images.map((image) => image.file),
-        )
-      return created
+      desiredContactMethods.current = methods
+      const [contactResult, imageResult] = await Promise.allSettled([
+        methods.length > 0
+          ? api.replacePublicationContactSettings(created.publication.id, {
+              methods,
+            })
+          : Promise.resolve(undefined),
+        pendingImages.images.length > 0
+          ? api.uploadPublicationImages(
+              created.publication.id,
+              pendingImages.images.map((image) => image.file),
+            )
+          : Promise.resolve(undefined),
+      ])
+      const needsContactRetry = contactResult.status === 'rejected'
+      const needsImageRetry = imageResult.status === 'rejected'
+      setContactRetryNeeded(needsContactRetry)
+      setImageRetryNeeded(needsImageRetry)
+      setContactSaveError(
+        contactResult.status === 'rejected' ? contactResult.reason : undefined,
+      )
+      setImageUploadError(
+        imageResult.status === 'rejected' ? imageResult.reason : undefined,
+      )
+      if (imageResult.status === 'fulfilled') pendingImages.clear()
+      return { ...created, complete: !needsContactRetry && !needsImageRetry }
     },
-    onSuccess: async ({ publication }) => {
-      pendingImages.clear()
+    onSuccess: async ({ publication, complete }) => {
       await client.invalidateQueries({ queryKey: ['publications'] })
       await client.invalidateQueries({ queryKey: ['my-publications'] })
-      navigate(`/publications/${publication.id}`)
+      if (complete) navigate(`/publications/${publication.id}`)
     },
   })
   const retryUpload = useMutation({
@@ -802,6 +886,8 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
     onSuccess: async () => {
       if (!createdPublicationId) return
       pendingImages.clear()
+      setImageRetryNeeded(false)
+      setImageUploadError(undefined)
       await Promise.all([
         client.invalidateQueries({
           queryKey: ['publication', createdPublicationId],
@@ -809,11 +895,28 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
         client.invalidateQueries({ queryKey: ['publications'] }),
         client.invalidateQueries({ queryKey: ['my-publications'] }),
       ])
-      navigate(`/publications/${createdPublicationId}`)
+      if (!contactRetryNeeded) navigate(`/publications/${createdPublicationId}`)
     },
   })
-  if (edit && existing.isLoading) return <Spinner />
-  if (edit && existing.isError) return <Alert error={existing.error} />
+  const retryContact = useMutation({
+    mutationFn: async () => {
+      if (!createdPublicationId)
+        throw new Error('No existe una publicación para reintentar')
+      return api.replacePublicationContactSettings(createdPublicationId, {
+        methods: desiredContactMethods.current,
+      })
+    },
+    onSuccess: () => {
+      setContactRetryNeeded(false)
+      setContactSaveError(undefined)
+      if (!imageRetryNeeded && createdPublicationId)
+        navigate(`/publications/${createdPublicationId}`)
+    },
+  })
+  if (edit && (existing.isLoading || contactSettings.isLoading))
+    return <Spinner />
+  if (edit && (existing.isError || contactSettings.isError))
+    return <Alert error={existing.error ?? contactSettings.error} />
   if (
     edit &&
     existing.data &&
@@ -831,13 +934,13 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
       />
     )
   const item = existing.data?.publication
-  const submit = (event: React.FormEvent<HTMLFormElement>) => {
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (createdPublicationId) {
-      retryUpload.mutate()
-      return
-    }
-    const form = new FormData(event.currentTarget)
+    if (createdPublicationId) return
+    const formElement = event.currentTarget
+    if (!(await contactForm.trigger())) return
+    const methods = toContactMethods(contactForm.getValues())
+    const form = new FormData(formElement)
     const value = (name: string) => String(form.get(name) ?? '').trim()
     const nullable = (name: string) => value(name) || null
     if (
@@ -885,7 +988,7 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
           ...(selectedLocation ? { location: selectedLocation } : {}),
           animal,
         }
-    mutation.mutate(body)
+    mutation.mutate({ body, methods })
   }
   return (
     <section className="form-page">
@@ -1046,29 +1149,63 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
             />
           </Field>
         </fieldset>
+        <ContactSettingsFields
+          form={contactForm}
+          {...(item ? { status: item.status } : {})}
+          {...(edit
+            ? {
+                originalMethods: new Set<ContactMethodType>(
+                  (contactSettings.data?.contactSettings?.methods ?? []).map(
+                    (method) => method.type,
+                  ),
+                ),
+              }
+            : {})}
+        />
         {!edit && (
           <ImagePicker
             pending={pendingImages}
             disabled={mutation.isPending || retryUpload.isPending}
           />
         )}
-        {createdPublicationId && mutation.isError && (
+        {createdPublicationId && (contactRetryNeeded || imageRetryNeeded) && (
           <div className="partial-success" role="alert">
             <strong>La publicación se ha creado.</strong>
-            <p>
-              Las imágenes no pudieron subirse. Puedes reintentarlo sin crear
-              otra publicación o abrir el detalle ahora.
-            </p>
+            {contactRetryNeeded && (
+              <p>
+                El contacto no pudo guardarse. Puedes reintentarlo sin crear
+                otra publicación.
+              </p>
+            )}
+            {imageRetryNeeded && (
+              <p>
+                Las imágenes no pudieron subirse. Puedes reintentarlo sin crear
+                otra publicación.
+              </p>
+            )}
             <div className="actions">
-              <button
-                type="button"
-                disabled={retryUpload.isPending}
-                onClick={() => retryUpload.mutate()}
-              >
-                {retryUpload.isPending
-                  ? 'Reintentando…'
-                  : 'Reintentar imágenes'}
-              </button>
+              {contactRetryNeeded && (
+                <button
+                  type="button"
+                  disabled={retryContact.isPending}
+                  onClick={() => retryContact.mutate()}
+                >
+                  {retryContact.isPending
+                    ? 'Reintentando…'
+                    : 'Reintentar contacto'}
+                </button>
+              )}
+              {imageRetryNeeded && (
+                <button
+                  type="button"
+                  disabled={retryUpload.isPending}
+                  onClick={() => retryUpload.mutate()}
+                >
+                  {retryUpload.isPending
+                    ? 'Reintentando…'
+                    : 'Reintentar imágenes'}
+                </button>
+              )}
               <Link
                 className="button secondary-link"
                 to={`/publications/${createdPublicationId}`}
@@ -1079,15 +1216,21 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
           </div>
         )}
         <Alert error={mutation.error} />
-        <Alert error={retryUpload.error} />
+        <Alert error={contactSaveError ?? retryContact.error} />
+        <Alert error={imageUploadError ?? retryUpload.error} />
         <button
           type="submit"
-          disabled={mutation.isPending || retryUpload.isPending}
+          disabled={
+            mutation.isPending ||
+            retryUpload.isPending ||
+            retryContact.isPending ||
+            Boolean(createdPublicationId)
+          }
         >
-          {mutation.isPending || retryUpload.isPending
+          {mutation.isPending || retryUpload.isPending || retryContact.isPending
             ? 'Guardando…'
             : createdPublicationId
-              ? 'Reintentar imágenes'
+              ? 'Publicación creada'
               : edit
                 ? 'Guardar cambios'
                 : 'Guardar publicación'}

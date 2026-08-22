@@ -40,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             await api.logout()
           } finally {
             setUser(null)
+            client.removeQueries({ queryKey: ['contact-settings'] })
+            client.removeQueries({ queryKey: ['publication-contact'] })
             await client.invalidateQueries({ queryKey: ['my-publications'] })
           }
         },

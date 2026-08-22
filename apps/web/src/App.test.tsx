@@ -475,6 +475,44 @@ describe('frontend funcional', () => {
     )
   })
 
+  it.each([
+    [`/publications/${publication.id}`, `/publications/${publication.id}`],
+    ['https://evil.example', '/'],
+    ['//evil.example', '/'],
+    ['javascript:alert(1)', '/'],
+    ['/login', '/'],
+  ])('tras login sanitiza returnTo %s', async (returnTo, expectedPath) => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url.includes('/auth/login'))
+        return json({
+          user: {
+            id: publication.author.id,
+            name: 'Diego',
+            email: 'diego@example.test',
+            role: 'USER',
+          },
+        })
+      if (url.includes('/auth/me')) return json({}, 401)
+      if (url.endsWith(`/publications/${publication.id}`))
+        return json({ publication })
+      return json({
+        items: [],
+        pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderApp(`/login?returnTo=${encodeURIComponent(returnTo)}`)
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'diego@example.test' },
+    })
+    fireEvent.change(screen.getByLabelText('Contraseña'), {
+      target: { value: 'una contraseña segura' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+    await waitFor(() => expect(window.location.pathname).toBe(expectedPath))
+  })
+
   it('crea JSON antes de multipart y reintenta upload sin duplicar publicación', async () => {
     let uploadAttempts = 0
     const fetchMock = vi.fn(
@@ -555,6 +593,104 @@ describe('frontend funcional', () => {
       String(url).endsWith(`/publications/${publication.id}/images`),
     )
     expect((uploadCall?.[1] as RequestInit).body).toBeInstanceOf(FormData)
+  })
+
+  it('reintenta solo contacto tras una creación parcial sin recrear ni subir imágenes', async () => {
+    let contactAttempts = 0
+    let imageUploads = 0
+    const fetchMock = vi.fn(
+      (input: RequestInfo | URL, options?: RequestInit) => {
+        const url = String(input)
+        if (url.includes('/auth/me'))
+          return json({
+            user: {
+              id: publication.author.id,
+              name: 'Diego',
+              email: 'account@example.test',
+              role: 'USER',
+            },
+          })
+        if (url.endsWith('/publications') && options?.method === 'POST')
+          return json({ publication }, 201)
+        if (url.endsWith(`/publications/${publication.id}/contact-settings`)) {
+          contactAttempts += 1
+          return contactAttempts === 1
+            ? json(
+                {
+                  error: {
+                    code: 'CONTACT_SAVE_FAILED',
+                    message: 'No se pudo guardar el contacto',
+                  },
+                },
+                503,
+              )
+            : json({
+                contactSettings: {
+                  methods: [{ type: 'PHONE', value: '+34600111222' }],
+                },
+              })
+        }
+        if (url.endsWith(`/publications/${publication.id}/images`)) {
+          imageUploads += 1
+          return json({ images: [] }, 201)
+        }
+        if (url.endsWith(`/publications/${publication.id}`))
+          return json({ publication })
+        return json({
+          items: [],
+          pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+        })
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderApp('/publications/new')
+
+    await screen.findByRole('heading', { name: 'Publica una huella' })
+    fireEvent.change(screen.getByLabelText('Título'), {
+      target: { value: 'Se busca a Rocky' },
+    })
+    fireEvent.change(screen.getByLabelText('Fecha y hora'), {
+      target: { value: '2026-08-20T10:00' },
+    })
+    fireEvent.change(screen.getByLabelText('Seleccionar imágenes'), {
+      target: {
+        files: [new File(['image'], 'rocky.jpg', { type: 'image/jpeg' })],
+      },
+    })
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Teléfono' }))
+    fireEvent.change(
+      screen.getByLabelText('Teléfono', { selector: 'input[type="tel"]' }),
+      {
+        target: { value: '+34 600-111-222' },
+      },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar publicación' }))
+
+    expect(
+      await screen.findByText(/El contacto no pudo guardarse/),
+    ).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar contacto' }))
+    await waitFor(() =>
+      expect(window.location.pathname).toBe(`/publications/${publication.id}`),
+    )
+
+    expect(contactAttempts).toBe(2)
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, options]) =>
+          String(url).endsWith('/publications') &&
+          (options as RequestInit | undefined)?.method === 'POST',
+      ),
+    ).toHaveLength(1)
+    expect(imageUploads).toBe(1)
+    const contactBody = (
+      fetchMock.mock.calls.find(([url]) =>
+        String(url).endsWith('/contact-settings'),
+      )?.[1] as RequestInit
+    ).body
+    expect(JSON.parse(String(contactBody))).toEqual({
+      methods: [{ type: 'PHONE', value: '+34600111222' }],
+    })
   })
 
   it('recupera desde mine el detalle archived propio y solo ofrece eliminar imágenes', async () => {

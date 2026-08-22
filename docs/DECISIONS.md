@@ -1,5 +1,13 @@
 # Registro de decisiones arquitectónicas
 
+## ADR-023 — Métodos de contacto por publicación
+
+**Status:** Accepted
+
+**Decision:** Guardar un snapshot explícito en `publication_contact_methods`, separado de usuario y aggregate público. No reutilizar automáticamente el email de login. La colección se reemplaza atómicamente, ausencia significa deshabilitado y los valores se almacenan temporalmente en texto normal sin índices ni logs. La revelación exige autenticación, acción explícita y publicación `ACTIVE`; owner conserva lectura y retirada en cualquier estado.
+
+**Consequences:** Listados, cards, búsqueda, `PublicPublicationDto` y `/manage` permanecen libres de contacto. Endpoints dedicados aplican ownership o revelación autenticada, no-store y rate limiting; el cliente limpia PII tras su uso. Existe riesgo residual ante filtración de PostgreSQL/backups y queda pendiente evaluar envelope encryption antes de producción. Véase [ADR-023](ADR-023-PUBLICATION-CONTACT-METHODS.md).
+
 ## ADR-022 — Estrategia geoespacial y privacidad de ubicación
 
 **Status:** Accepted
