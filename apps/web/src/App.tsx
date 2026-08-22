@@ -15,7 +15,14 @@ import {
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useAuth } from './features/auth/AuthProvider'
-import { api, ApiError } from './services/api'
+import {
+  ImagePicker,
+  ImagePlaceholder,
+  OwnerImageManager,
+  PublicationGallery,
+} from './features/images/PublicationImages'
+import { usePendingImages } from './features/images/usePendingImages'
+import { api, ApiError, resolveApiAssetUrl } from './services/api'
 import type { Publication, PublicationStatus, PublicationType } from './types'
 import './App.css'
 
@@ -119,11 +126,28 @@ function Protected() {
 }
 
 function Card({ publication }: { publication: Publication }) {
+  const [imageBroken, setImageBroken] = React.useState(false)
+  const primary = [...publication.images].sort(
+    (left, right) => left.position - right.position,
+  )[0]
+  const name = publication.animal.name ?? publication.title
   return (
     <article className="card">
-      <div className="placeholder" aria-label="Imagen no disponible">
-        <span>🐾</span>
-      </div>
+      {primary && !imageBroken ? (
+        <img
+          className="card-image"
+          src={resolveApiAssetUrl(primary.thumbnailUrl)}
+          alt={`Imagen de ${name}`}
+          width={primary.width ?? undefined}
+          height={primary.height ?? undefined}
+          loading="lazy"
+          onError={() => setImageBroken(true)}
+        />
+      ) : (
+        <div className="placeholder" aria-label="Imagen no disponible">
+          <span aria-hidden="true">🐾</span>
+        </div>
+      )}
       <div className="card-body">
         <div className="badges">
           <span className={`badge ${publication.type.toLowerCase()}`}>
@@ -416,6 +440,14 @@ function Detail() {
     queryFn: () => api.publication(id),
     retry: false,
   })
+  const archivedOwnerResult = useQuery({
+    queryKey: ['my-publications'],
+    queryFn: api.mine,
+    enabled:
+      auth.authenticated &&
+      result.error instanceof ApiError &&
+      result.error.status === 404,
+  })
   const status = useMutation({
     mutationFn: (target: PublicationStatus) => api.changeStatus(id, target),
     onSuccess: async () => {
@@ -423,24 +455,28 @@ function Detail() {
       await queryClient.invalidateQueries({ queryKey: ['my-publications'] })
     },
   })
-  if (result.isLoading) return <Spinner />
-  if (result.isError)
-    return result.error instanceof ApiError && result.error.status === 404 ? (
-      <NotFound />
-    ) : (
-      <Alert error={result.error} />
-    )
-  if (!result.data) return <Alert error={new Error('Respuesta vacía')} />
-  const item = result.data.publication
+  if (result.isLoading || archivedOwnerResult.isLoading) return <Spinner />
+  if (
+    result.isError &&
+    !(result.error instanceof ApiError && result.error.status === 404)
+  )
+    return <Alert error={result.error} />
+  if (archivedOwnerResult.isError)
+    return <Alert error={archivedOwnerResult.error} />
+  const item =
+    result.data?.publication ??
+    archivedOwnerResult.data?.items.find((publication) => publication.id === id)
+  if (!item) return <NotFound />
   const owner = auth.user?.id === item.author.id
   return (
     <article className="detail">
       <Link to="/">← Volver a explorar</Link>
       <div className="detail-grid">
-        <div className="detail-image">
-          <span>🐾</span>
-          <p>Imagen no disponible</p>
-        </div>
+        {item.images.length > 0 ? (
+          <PublicationGallery publication={item} />
+        ) : (
+          <ImagePlaceholder />
+        )}
         <div>
           <div className="badges">
             <span className={`badge ${item.type.toLowerCase()}`}>
@@ -506,6 +542,7 @@ function Detail() {
           <Alert error={status.error} />
         </div>
       </div>
+      {owner && <OwnerImageManager publication={item} />}
     </article>
   )
 }
@@ -515,6 +552,9 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
   const navigate = useNavigate()
   const auth = useAuth()
   const client = useQueryClient()
+  const pendingImages = usePendingImages()
+  const [createdPublicationId, setCreatedPublicationId] =
+    React.useState<string>()
   const existing = useQuery({
     queryKey: ['publication', id],
     queryFn: () => api.publication(id),
@@ -522,12 +562,44 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
     retry: false,
   })
   const mutation = useMutation({
-    mutationFn: (body: unknown) =>
-      edit ? api.updatePublication(id, body) : api.createPublication(body),
+    mutationFn: async (body: unknown) => {
+      if (edit) return api.updatePublication(id, body)
+      const created = await api.createPublication(body)
+      setCreatedPublicationId(created.publication.id)
+      if (pendingImages.images.length > 0)
+        await api.uploadPublicationImages(
+          created.publication.id,
+          pendingImages.images.map((image) => image.file),
+        )
+      return created
+    },
     onSuccess: async ({ publication }) => {
+      pendingImages.clear()
       await client.invalidateQueries({ queryKey: ['publications'] })
       await client.invalidateQueries({ queryKey: ['my-publications'] })
       navigate(`/publications/${publication.id}`)
+    },
+  })
+  const retryUpload = useMutation({
+    mutationFn: async () => {
+      if (!createdPublicationId)
+        throw new Error('No existe una publicación para reintentar')
+      return api.uploadPublicationImages(
+        createdPublicationId,
+        pendingImages.images.map((image) => image.file),
+      )
+    },
+    onSuccess: async () => {
+      if (!createdPublicationId) return
+      pendingImages.clear()
+      await Promise.all([
+        client.invalidateQueries({
+          queryKey: ['publication', createdPublicationId],
+        }),
+        client.invalidateQueries({ queryKey: ['publications'] }),
+        client.invalidateQueries({ queryKey: ['my-publications'] }),
+      ])
+      navigate(`/publications/${createdPublicationId}`)
     },
   })
   if (edit && existing.isLoading) return <Spinner />
@@ -550,6 +622,10 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
   const item = existing.data?.publication
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (createdPublicationId) {
+      retryUpload.mutate()
+      return
+    }
     const form = new FormData(event.currentTarget)
     const value = (name: string) => String(form.get(name) ?? '').trim()
     const nullable = (name: string) => value(name) || null
@@ -731,9 +807,49 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
             />
           </Field>
         </fieldset>
+        {!edit && (
+          <ImagePicker
+            pending={pendingImages}
+            disabled={mutation.isPending || retryUpload.isPending}
+          />
+        )}
+        {createdPublicationId && mutation.isError && (
+          <div className="partial-success" role="alert">
+            <strong>La publicación se ha creado.</strong>
+            <p>
+              Las imágenes no pudieron subirse. Puedes reintentarlo sin crear
+              otra publicación o abrir el detalle ahora.
+            </p>
+            <div className="actions">
+              <button
+                type="button"
+                disabled={retryUpload.isPending}
+                onClick={() => retryUpload.mutate()}
+              >
+                {retryUpload.isPending
+                  ? 'Reintentando…'
+                  : 'Reintentar imágenes'}
+              </button>
+              <Link
+                className="button secondary-link"
+                to={`/publications/${createdPublicationId}`}
+              >
+                Ir a la publicación
+              </Link>
+            </div>
+          </div>
+        )}
         <Alert error={mutation.error} />
-        <button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Guardando…' : 'Guardar publicación'}
+        <Alert error={retryUpload.error} />
+        <button
+          type="submit"
+          disabled={mutation.isPending || retryUpload.isPending}
+        >
+          {mutation.isPending || retryUpload.isPending
+            ? 'Guardando…'
+            : createdPublicationId
+              ? 'Reintentar imágenes'
+              : 'Guardar publicación'}
         </button>
       </form>
     </section>

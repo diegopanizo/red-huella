@@ -38,4 +38,12 @@ Se prevén al menos local, CI/test y producción. Un staging solo se añadirá s
 
 ## Decisiones pendientes
 
-Hosting, región, dominio, almacenamiento de imágenes, estrategia de backups, observabilidad, presupuesto y objetivos de disponibilidad. El Compose local no determina el empaquetado ni el despliegue futuro de la aplicación.
+Hosting, región, dominio, proveedor de object storage, estrategia de backups, observabilidad, presupuesto y objetivos de disponibilidad. El Compose local no determina el empaquetado ni el despliegue futuro de la aplicación.
+
+## Almacenamiento de imágenes
+
+Desarrollo configura `IMAGE_STORAGE_DRIVER=local` y `IMAGE_STORAGE_LOCAL_ROOT=.data/uploads`; `.data/tmp` queda reservado para temporales de procesamiento. Ambos directorios están fuera de Git y de `apps/web/public`. El proceso debe ser su único escritor, ejecutarse con permisos mínimos y disponer de espacio limitado.
+
+El backend crea ambos directorios cuando son necesarios y limpia temporales al terminar, cerrar o fallar una petición. Producción debe montar storage persistente privado, limitar espacio/inodos y monitorizar tanto `.data/tmp` como jobs pendientes. `ProcessStorageDeletionJobsService` puede invocarse manualmente; este bloque no instala scheduler. El rate limiter de upload es in-memory y requiere un backend compartido o control equivalente antes de escalar horizontalmente.
+
+El filesystem local solo es válido para desarrollo o un despliegue de una réplica con volumen persistente. Producción multi-réplica deberá implementar el mismo contrato sobre S3/R2 compatible, bucket privado y credenciales de mínimo privilegio. Backups/restauración deberán coordinar PostgreSQL y objetos. No se ha implementado aún ese adaptador ni deben declararse sus secretos. La entrega futura no usará caché pública immutable larga y debe respetar el archivado de publicaciones.

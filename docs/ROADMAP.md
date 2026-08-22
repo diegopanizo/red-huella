@@ -36,13 +36,15 @@ Modelo y API para animales/publicaciones, estados, propiedad, validación y test
 
 Navegación, identidad y flujos de publicaciones accesibles y responsive conectados a la API.
 
-## Milestone 7 — Geolocalización (siguiente)
+## Milestone 7 — Imágenes (en curso)
+
+Upload seguro, procesamiento, eliminación de EXIF, almacenamiento desacoplado y ciclo de borrado. Los Bloques 1–4 implementan schema/storage, Sharp, backend HTTP y experiencia frontend respectivamente. El milestone continúa en curso hasta su cierre final; no se adelantan geolocalización ni funcionalidades posteriores.
+
+## Milestone 8 — Geolocalización
 
 PostGIS, búsquedas espaciales y separación verificada entre ubicación exacta y pública.
 
-## Milestone 8 — Imágenes
-
-Upload seguro, procesamiento, eliminación de EXIF, almacenamiento y ciclo de borrado.
+> Cambio de orden aprobado al iniciar el Milestone 7: el roadmap anterior situaba geolocalización en el Milestone 7 e imágenes en el 8. Se adelantó imágenes para completar las publicaciones antes de incorporar capacidades geoespaciales; el cambio se registra en ADR-021 y no implica que el antiguo Milestone 7 se haya implementado.
 
 ## Milestone 9 — Favoritos
 

@@ -39,6 +39,7 @@ beforeAll(async () => {
 })
 
 beforeEach(async () => {
+  await testDatabase.delete(schema.storageDeletionJobs)
   await testDatabase.delete(schema.sessions)
   await testDatabase.delete(schema.publicationImages)
   await testDatabase.delete(schema.publications)
@@ -55,13 +56,14 @@ describe('PostgreSQL persistence', () => {
     const result = await testPool.query<{ table_name: string }>(
       `select table_name from information_schema.tables
        where table_schema = 'public'
-       and table_name in ('users', 'animals', 'publications', 'publication_images', 'sessions')`,
+       and table_name in ('users', 'animals', 'publications', 'publication_images', 'sessions', 'storage_deletion_jobs')`,
     )
     expect(result.rows.map((row) => row.table_name).sort()).toEqual([
       'animals',
       'publication_images',
       'publications',
       'sessions',
+      'storage_deletion_jobs',
       'users',
     ])
   })
@@ -200,5 +202,57 @@ describe('PostgreSQL persistence', () => {
         position: -1,
       }),
     ).rejects.toBeDefined()
+  })
+
+  it('enforces complete variant metadata and persists deletion outbox entries', async () => {
+    const { user, animal } = await createPublicationFixture()
+    const publication = await publicationRepository.create({
+      userId: user.id,
+      animalId: animal.id,
+      type: 'LOST',
+      title: 'Normalized image metadata fixture',
+      eventDate: new Date(),
+    })
+    const imageId = randomUUID()
+    const prefix = `publications/${publication.id}/${imageId}`
+    const checksum = 'a'.repeat(64)
+
+    await expect(
+      testDatabase.insert(schema.publicationImages).values({
+        id: imageId,
+        publicationId: publication.id,
+        storageKey: `${prefix}/display.webp`,
+        thumbnailStorageKey: `${prefix}/thumbnail.webp`,
+        mimeType: 'image/webp',
+        displayWidth: 1600,
+        displayHeight: 1200,
+        displayByteSize: 120_000,
+        displayChecksumSha256: checksum,
+        thumbnailWidth: 640,
+        thumbnailHeight: 480,
+        thumbnailByteSize: 20_000,
+        thumbnailChecksumSha256: 'b'.repeat(64),
+        position: 0,
+      }),
+    ).resolves.toBeDefined()
+
+    await expect(
+      testDatabase.insert(schema.publicationImages).values({
+        publicationId: publication.id,
+        storageKey: `${prefix}/incomplete.webp`,
+        mimeType: 'image/webp',
+        displayWidth: 100,
+        displayHeight: 100,
+        displayByteSize: 100,
+        displayChecksumSha256: 'invalid',
+        position: 1,
+      }),
+    ).rejects.toBeDefined()
+
+    const [job] = await testDatabase
+      .insert(schema.storageDeletionJobs)
+      .values({ storageKey: `${prefix}/display.webp` })
+      .returning()
+    expect(job).toMatchObject({ attempts: 0, completedAt: null })
   })
 })

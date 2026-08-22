@@ -10,6 +10,8 @@ const safeEnvironment: Environment = {
   DATABASE_URL: 'postgresql://user:password@localhost/red_huella',
   DATABASE_TEST_URL: 'postgresql://user:password@localhost/red_huella_test',
   LOG_LEVEL: 'silent',
+  IMAGE_STORAGE_DRIVER: 'local',
+  IMAGE_STORAGE_LOCAL_ROOT: 'C:\\red-huella-test-images',
 }
 
 describe('assertSafeTestDatabaseUrl', () => {

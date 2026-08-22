@@ -1,4 +1,9 @@
-import type { Publication, PublicationList, User } from '../types'
+import type {
+  Publication,
+  PublicationImage,
+  PublicationList,
+  User,
+} from '../types'
 
 const apiUrl =
   (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ??
@@ -29,7 +34,9 @@ async function requestJson<T>(
     ...options,
     credentials: 'include',
     headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.body && !(options.body instanceof FormData)
+        ? { 'Content-Type': 'application/json' }
+        : {}),
       ...options.headers,
     },
   })
@@ -46,6 +53,11 @@ async function requestJson<T>(
   }
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
+}
+
+export function resolveApiAssetUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path
+  return new URL(path, new URL(apiUrl).origin).toString()
 }
 
 export const api = {
@@ -81,4 +93,24 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+  uploadPublicationImages: (id: string, files: readonly File[]) => {
+    const body = new FormData()
+    for (const file of files) body.append('images', file)
+    return requestJson<{ images: PublicationImage[] }>(
+      `/publications/${id}/images`,
+      { method: 'POST', body },
+    )
+  },
+  deletePublicationImage: (publicationId: string, imageId: string) =>
+    requestJson<void>(`/publications/${publicationId}/images/${imageId}`, {
+      method: 'DELETE',
+    }),
+  reorderPublicationImages: (
+    publicationId: string,
+    imageIds: readonly string[],
+  ) =>
+    requestJson<{ images: PublicationImage[] }>(
+      `/publications/${publicationId}/images/order`,
+      { method: 'PATCH', body: JSON.stringify({ imageIds }) },
+    ),
 }

@@ -12,6 +12,28 @@
 
 Las actualizaciones compuestas siguen la misma transacción y actualizan `updated_at` desde aplicación. Para mutaciones: `request.auth.userId → comparación con publication.userId → operación autorizada`. Controllers no consultan DB ni deciden ownership.
 
+## Imágenes — Milestone 7, Bloques 1 a 4
+
+`ImageProcessor` y `ImageStorage` son puertos de aplicación. `SharpImageProcessor` implementa el primero y produce dos variantes WebP normalizadas; el segundo escribe, lee y elimina objetos sin conocer Express, PostgreSQL ni URLs públicas. `LocalImageStorage` es el adaptador de desarrollo y usa un root privado configurable.
+
+```mermaid
+flowchart LR
+    UC[Image application service] --> IP[SharpImageProcessor]
+    UC --> IS[ImageStorage]
+    IS --> LS[LocalImageStorage]
+    IS -. adaptador futuro .-> OS[S3/R2 compatible]
+    UC --> IR[ImageRepository]
+    IR --> PG[(PostgreSQL metadata)]
+```
+
+El procesador mantiene un único buffer de entrada limitado a 8 MiB y crea dos pipelines Sharp lazy desde la misma fuente. Metadata se valida antes de decodificar: allowlist JPEG/PNG/WebP, una sola página, 25 MP y 10.000 px por eje. La decodificación completa genera display 2048 y thumbnail 640, sin ampliación. La salida se autorrota, pasa a sRGB, conserva alpha, omite métodos de conservación de metadata y calcula SHA-256 por variante.
+
+Las keys `publications/{publicationId}/{imageId}/{display|thumbnail}.webp` son opacas, generadas por servidor y nunca contratos públicos. El storage local no se sirve mediante `express.static`. El flujo implementado es `Route → multipart/auth/origin → Controller → Service → ImageProcessor/ImageStorage/ImageRepository`. El multipart usa disco temporal controlado para no acumular el request arbitrariamente en RAM; el controller lee cada entrada acotada y el servicio procesa secuencialmente.
+
+El upload escribe las dos variantes antes de una inserción PostgreSQL atómica. `insertWithCapacity` bloquea la fila de publicación con `FOR UPDATE` y vuelve a validar owner, estado y capacidad, por lo que uploads concurrentes no superan seis. Si falla procesamiento, storage o DB, se eliminan best-effort todas las keys escritas. Delete elimina metadata, compacta posiciones y crea dos entradas de outbox en una transacción; después intenta el borrado idempotente y conserva los jobs fallidos para ejecución manual futura. Reorder bloquea la misma fila y desplaza posiciones temporalmente para evitar colisiones del índice unique.
+
+En frontend, `usePendingImages` mantiene `File` y object URLs locales con cleanup explícito; `ImagePicker` aporta selección y orden previo accesible. Crear conserva el flujo JSON → multipart. Si el segundo paso falla, el ID creado queda en estado de aplicación para reintentar exclusivamente el upload. `PublicationGallery` y `OwnerImageManager` consumen únicamente URLs/IDs públicos y las mutaciones invalidan detalle, mine y listados. Para una publicación archivada, el detalle usa `/mine` como fallback autenticado porque el endpoint público preserva 404.
+
 ## Flujo de autenticación
 
 `Browser → Controller/validación → Register/Login Service → User/Session Repository → PostgreSQL → cookie HttpOnly`.

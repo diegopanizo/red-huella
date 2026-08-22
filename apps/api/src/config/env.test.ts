@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
 
 import { parseEnvironment } from './env.js'
@@ -8,13 +10,20 @@ const validEnvironment: NodeJS.ProcessEnv = {
   WEB_ORIGIN: 'http://localhost:5173',
   DATABASE_URL: 'postgresql://user:password@localhost:5432/red_huella_test',
   LOG_LEVEL: 'silent',
+  IMAGE_STORAGE_DRIVER: 'local',
+  IMAGE_STORAGE_LOCAL_ROOT: '.data/uploads',
 }
+
+const expectedStorageRoot = fileURLToPath(
+  new URL('../../../../.data/uploads', import.meta.url),
+)
 
 describe('parseEnvironment', () => {
   it('valida y convierte una configuración completa', () => {
     expect(parseEnvironment(validEnvironment)).toEqual({
       ...validEnvironment,
       PORT: 3000,
+      IMAGE_STORAGE_LOCAL_ROOT: expectedStorageRoot,
     })
   })
 
@@ -30,5 +39,16 @@ describe('parseEnvironment', () => {
     expect(() =>
       parseEnvironment({ ...validEnvironment, PORT: '70000', WEB_ORIGIN: '*' }),
     ).toThrow(/Configuración de entorno no válida/)
+  })
+  it('solo acepta el driver local y una ruta no vacia', () => {
+    expect(() =>
+      parseEnvironment({ ...validEnvironment, IMAGE_STORAGE_DRIVER: 's3' }),
+    ).toThrow(/Configuraci/)
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        IMAGE_STORAGE_LOCAL_ROOT: '   ',
+      }),
+    ).toThrow(/Configuraci/)
   })
 })

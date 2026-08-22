@@ -8,6 +8,10 @@ playwright-report/
 test-results/
 *.tsbuildinfo
 
+# Local image storage (Milestone 7)
+.data/uploads/
+.data/tmp/
+
 # Environment files (keep the documented template)
 .env
 .env.*

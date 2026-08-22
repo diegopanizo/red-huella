@@ -6,7 +6,7 @@ La API usa sesiones opacas revocables persistidas en PostgreSQL. El navegador re
 
 ## Publications backend
 
-El backend permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado con reglas explícitas y consultar las publicaciones propias. Ownership, paginación y filtros se aplican en servidor. Todavía no existen búsqueda geográfica ni upload.
+La aplicación permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado y gestionar hasta seis imágenes normalizadas por publicación. Ownership, estados, paginación y filtros se aplican en servidor. El Bloque 4 incorpora selector, previews, galería, thumbnails y gestión accesible de imágenes; el cierre final del Milestone 7 sigue pendiente.
 
 ## Frontend funcional
 
@@ -20,7 +20,7 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 4 completado (autenticación y usuarios iniciales).**
+**En desarrollo — Milestone 7, Bloque 4 (experiencia frontend de imágenes).**
 
 Actualmente existe una plantilla frontend React/Vite y una API Express con health de PostgreSQL, errores sanitizados, request IDs, logging estructurado y cierre gracioso. El schema Drizzle implementa `users`, `animals`, `publications` y `publication_images`, con migration, seed y repositories base. La conexión real sigue pendiente de credenciales locales.
 
@@ -74,7 +74,7 @@ Este comando instala todos los workspaces y actualiza el único `package-lock.js
 npm run dev:web
 ```
 
-Vite mostrará la URL local, habitualmente `http://localhost:5173`. La interfaz actual es la plantilla inicial, no el producto Red Huella.
+Vite mostrará la URL local, habitualmente `http://localhost:5173`. La interfaz consume la API configurada mediante `VITE_API_URL`, incluidas las rutas relativas de contenido de imagen.
 
 ## Ejecución backend
 
@@ -128,7 +128,7 @@ npm run db:studio
 npm run db:seed
 ```
 
-El flujo principal usa migrations versionadas, nunca `db push`. `db:seed` añade de forma idempotente dos usuarios sin contraseña, tres animales, tres publicaciones y dos claves de imagen sintéticas. No crea administradores ni credenciales.
+El flujo principal usa migrations versionadas, nunca `db push`. `db:seed` añade de forma idempotente dos usuarios sin contraseña, tres animales y tres publicaciones. No crea administradores, credenciales, imágenes ficticias ni binarios demo.
 
 ## Tests PostgreSQL
 
@@ -157,7 +157,7 @@ red-huella/
 
 ## Testing
 
-Existen un test de renderizado real del frontend y un test de integración del health endpoint. La estrategia completa está en [docs/TESTING.md](docs/TESTING.md).
+Existen tests de comportamiento frontend para autenticación, publicaciones e imágenes, además de suites unitarias, HTTP y PostgreSQL de la API. La estrategia completa está en [docs/TESTING.md](docs/TESTING.md).
 
 ## Calidad
 

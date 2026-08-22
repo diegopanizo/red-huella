@@ -16,6 +16,14 @@ Vitest cubre Argon2id, tokens, expiración, cookies y schemas. La suite PostgreS
 
 **Base implementada.** Vitest se ejecuta por workspace desde la raíz. El frontend usa React Testing Library con jsdom y la API usa Supertest sin abrir un puerto real.
 
+El Bloque 1 del Milestone 7 añade tests unitarios de generación de keys y `LocalImageStorage`: directorios temporales reales del sistema, escritura/lectura, no sobrescritura, rechazo de traversal/keys ajenas y borrado idempotente. La suite PostgreSQL valida la migración aditiva, grupos de metadatos y outbox.
+
+El Bloque 2 genera todas sus fixtures en memoria con Sharp y cubre JPEG/PNG/WebP, normalización, tamaños, no ampliación, autorrotación, eliminación de EXIF/GPS/ICC, sRGB, alpha, metadatos y checksums de salida. También cubre SVG, GIF, HEIF, animación GIF/WebP, corrupción, 8 MiB, 25 MP y 10.000 px. No hay binarios versionados, red ni archivos externos.
+
+El Bloque 3 añade Supertest con PostgreSQL y directorios temporales reales. Cubre multipart JPEG/PNG/WebP, límites por archivo/petición/capacidad, SVG/GIF/HEIF y corrupción, auth/Origin/ownership, matriz ACTIVE/RESOLVED/ADOPTED/ARCHIVED, uploads concurrentes, reordenación densa, borrado y compactación, outbox completada o pendiente, compensación ante fallo de storage/DB, contenido público/archivado, objeto ausente, ETag/304 y ausencia de keys/paths en DTOs.
+
+El Bloque 4 usa RTL/jsdom para selector múltiple, previews y revocación de object URLs, límites UX, FormData sin Content-Type manual, orden JSON → multipart, fallo parcial y reintento sin duplicado. También prueba thumbnail/placeholder de cards, galería seleccionable y fallback roto, upload/delete/reorder owner, archived, capacidad y la invalidación de detalle, mine y listado.
+
 Tests actuales:
 
 - `apps/web/src/App.test.tsx`: comprueba que la interfaz inicial renderiza su encabezado y botón principal.

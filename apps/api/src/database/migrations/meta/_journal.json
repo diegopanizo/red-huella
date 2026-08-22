@@ -15,6 +15,13 @@
       "when": 1787399325014,
       "tag": "0001_rare_songbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787406203276,
+      "tag": "0002_abandoned_raider",
+      "breakpoints": true
     }
   ]
 }

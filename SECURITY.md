@@ -51,7 +51,7 @@ Este documento describe la estrategia de seguridad de Red Huella. El proyecto ha
 
 ### Planificado
 
-Siguen planificados recuperación y verificación de email, uploads seguros, moderación y autorización por propiedad de recurso. La configuración CORS definitiva de producción se obtiene de `WEB_ORIGIN` y debe validarse durante el despliegue.
+Siguen planificados recuperación y verificación de email, moderación y rate limiting distribuido. El backend de imágenes ya aplica transporte multipart acotado, procesamiento seguro, ownership, política por estado y entrega controlada por API.
 
 ## Principios
 
@@ -98,7 +98,9 @@ La API será la autoridad. Se validarán identidad, rol, propiedad del recurso y
 
 ## Imágenes y metadatos
 
-Los uploads no se servirán directamente sin validación. Se verificará contenido real además de extensión, se limitarán dimensiones y tamaño, y se eliminarán metadatos EXIF —especialmente GPS— antes de publicar. La similitud visual futura se comunicará como indicio, nunca como identificación segura.
+Los uploads no se sirven directamente ni se confía en filename, extensión o MIME declarado. Multer 2.2 limita el transporte a seis archivos, 8 MiB por archivo y 24 MiB agregados, rechaza campos inesperados y usa nombres temporales UUID fuera del árbol público; el cleanup se comparte entre finalización, cierre y controller. `SharpImageProcessor` sigue siendo la autoridad: acepta únicamente `metadata.format` JPEG, PNG o WebP, aplica 25 megapíxeles y 10.000 px por eje, conserva las protecciones de libvips y rechaza animación/multipágina antes de normalizar.
+
+El procesador autorrota, convierte el color a sRGB, elimina EXIF/GPS/ICC/XMP/IPTC y no conserva originales. Preserva alpha sin aplanar transparencia y genera WebP display hasta 2048 px y thumbnail hasta 640 px, ambos sin ampliación. Cada variante tiene bytes, dimensiones y SHA-256 propios. Los errores públicos son estables y no contienen mensajes de Multer, Sharp, SQL o storage. Las keys son generadas por servidor, el root local queda fuera de assets públicos y la resolución valida formato y contención. Las mutaciones exigen Origin, sesión, ownership y estado permitido; la entrega usa lookup por UUID, `nosniff`, ETag por variante y `private, no-cache, max-age=0, must-revalidate`. Una publicación archivada devuelve 404 salvo a su owner. Ningún DTO expone keys o paths. El upload tiene rate limit por IP de 10 peticiones/15 minutos en producción y 100 en desarrollo/test; al ser memoria local no coordina varias instancias.
 
 ## Privacidad de ubicación
 

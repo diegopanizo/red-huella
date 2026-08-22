@@ -18,6 +18,7 @@ describe('API infrastructure', () => {
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual({ status: 'ok', database: 'ok' })
+    expect(response.headers['cross-origin-resource-policy']).toBe('same-origin')
     expect(response.headers['x-request-id']).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     )

@@ -1,5 +1,13 @@
 # Registro de decisiones arquitectónicas
 
+## ADR-021 — Imágenes normalizadas y almacenamiento desacoplado
+
+**Status:** Accepted
+
+**Decision:** Adelantar imágenes al Milestone 7 y mover geolocalización/PostGIS al Milestone 8. PostgreSQL conserva metadatos y keys opacas; `ImageStorage` desacopla filesystem local de un futuro object storage compatible. Cada entrada JPEG, PNG o WebP será validada explícitamente, autorrotada, privada de metadatos y re-encodeada a variantes WebP display/thumbnail sin conservar el original. El borrado usará una outbox acotada `storage_deletion_jobs`.
+
+**Consequences:** Desarrollo usa `.data/uploads`, fuera de assets públicos y Git. Las respuestas futuras no expondrán keys ni rutas. No se implementan S3/R2, HTTP multipart, Sharp ni UI en el Bloque 1. La decisión completa, límites y consistencia están en [ADR-021](ADR-021-IMAGE-STORAGE.md).
+
 ## ADR-020 — Routing, server-state, formularios y CSS frontend
 
 **Status:** Accepted

@@ -69,6 +69,12 @@ export const changePublicationStatusSchema = z
   })
   .strict()
 export const publicationIdSchema = z.object({ id: z.uuid() }).strict()
+export const publicationImageIdSchema = z
+  .object({ id: z.uuid(), imageId: z.uuid() })
+  .strict()
+export const reorderPublicationImagesSchema = z
+  .object({ imageIds: z.array(z.uuid()).max(6) })
+  .strict()
 
 export const listPublicationsSchema = z
   .object({

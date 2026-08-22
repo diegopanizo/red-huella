@@ -30,7 +30,7 @@ Todos los POST requieren `Origin` igual a `WEB_ORIGIN`. Registro y login estable
 
 ## Estado
 
-La base Express y los endpoints de autenticación están implementados. Las áreas de negocio permanecen **PLANNED**.
+La base Express y los endpoints de autenticación, publicaciones e imágenes están implementados. Frontend de imágenes y las áreas futuras continúan **PLANNED**.
 
 El modelo y repositories de `users`, `animals` y `publications` son internos. No se han creado endpoints temporales ni se expone acceso directo a persistencia.
 
@@ -48,7 +48,7 @@ El modelo y repositories de `users`, `animals` y `publications` son internos. No
 
 - Base path: `/api/v1`.
 - HTTPS obligatorio fuera del entorno local.
-- JSON para requests/responses salvo uploads, cuyo diseño queda pendiente.
+- JSON para requests/responses salvo el upload de imágenes, que usa `multipart/form-data`.
 - Validación de path, query y body en el límite.
 - Autorización de acción y recurso en backend.
 - Identificador de correlación y formato de error estable sin stack traces.
@@ -88,7 +88,22 @@ Salvo los endpoints de auth y publicaciones documentados como implementados, est
 - Recuperación de contraseña y verificación de email bajo auth.
 - `GET/PATCH /api/v1/users/me` y operación futura de eliminación.
 - Búsqueda geográfica y eliminación física de publicaciones, si se justifica en un milestone futuro.
-- Operaciones de imágenes bajo una ruta y flujo aún por diseñar.
+- La UI de imágenes y el adaptador de object storage S3/R2 siguen pendientes; el backend descrito debajo está implementado.
+
+## Contrato implementado de imágenes
+
+| Método | Ruta                                                  | Acceso                 | Resultado                                             |
+| ------ | ----------------------------------------------------- | ---------------------- | ----------------------------------------------------- |
+| POST   | `/api/v1/publications/:publicationId/images`          | owner + Origin         | `201 { images }`; multipart, campo repetible `images` |
+| DELETE | `/api/v1/publications/:publicationId/images/:imageId` | owner + Origin         | `204`; metadata y outbox atómicas                     |
+| PATCH  | `/api/v1/publications/:publicationId/images/order`    | owner + Origin         | `200 { images }`; body `{ imageIds: UUID[] }`         |
+| GET    | `/api/v1/publication-images/:imageId/content`         | público salvo archived | stream WebP display                                   |
+| GET    | `/api/v1/publication-images/:imageId/thumbnail`       | público salvo archived | stream WebP thumbnail                                 |
+
+Máximo seis imágenes por publicación, 8 MiB por entrada y 24 MiB por petición. `ACTIVE`, `RESOLVED` y `ADOPTED` permiten al owner agregar, eliminar y reordenar; `ARCHIVED` solo eliminar. Reorder exige exactamente todos los IDs actuales, sin duplicados; posición cero es principal. Las respuestas entregan `id`, `position`, `url`, `thumbnailUrl`, `width` y `height`, nunca keys, checksums ni rutas internas.
+
+Display y thumbnail usan checksum propio como ETag, admiten `If-None-Match`/`304` y responden `Cache-Control: private, no-cache, max-age=0, must-revalidate`. En archived, anónimo u otro usuario recibe 404. Errores específicos: `IMAGE_UPLOAD_EMPTY`, `IMAGE_TOO_MANY`, `IMAGE_FILE_TOO_LARGE`, `IMAGE_REQUEST_TOO_LARGE`, `IMAGE_NOT_FOUND`, `IMAGE_FORBIDDEN`, `IMAGE_INVALID_ORDER`, `IMAGE_UPLOAD_NOT_ALLOWED_FOR_STATUS`, errores de procesamiento estables y `STORAGE_OPERATION_FAILED`.
+
 - `GET/POST/DELETE /api/v1/favorites` o recurso anidado equivalente, pendiente de ADR de contrato.
 
 ## Estados HTTP y seguridad

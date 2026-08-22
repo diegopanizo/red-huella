@@ -1,12 +1,7 @@
 import { env } from '../config/index.js'
 import { logger } from '../logging/logger.js'
 import { closeDatabase, db } from './client.js'
-import {
-  animals,
-  publicationImages,
-  publications,
-  users,
-} from './schema/index.js'
+import { animals, publications, users } from './schema/index.js'
 
 if (env.NODE_ENV === 'production') {
   throw new Error('El seed está deshabilitado en producción')
@@ -107,26 +102,8 @@ async function seed(): Promise<void> {
     ])
     .onConflictDoNothing()
 
-  await db
-    .insert(publicationImages)
-    .values([
-      {
-        id: '40000000-0000-4000-8000-000000000001',
-        publicationId: seedIds.publications[0],
-        storageKey: 'seed/luna-01.jpg',
-        position: 0,
-      },
-      {
-        id: '40000000-0000-4000-8000-000000000002',
-        publicationId: seedIds.publications[1],
-        storageKey: 'seed/found-cat-01.jpg',
-        position: 0,
-      },
-    ])
-    .onConflictDoNothing()
-
   logger.info(
-    { users: 2, animals: 3, publications: 3, images: 2 },
+    { users: 2, animals: 3, publications: 3, images: 0 },
     'development seed applied',
   )
 }

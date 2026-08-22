@@ -1,5 +1,12 @@
 # Changelog
 
+## Milestone 7 — en curso
+
+- Añadidos almacenamiento local desacoplado, normalización WebP segura, metadata por variante y outbox específica de borrado.
+- Implementados upload multipart, ownership, locking de capacidad, borrado/reordenación transaccional y entrega por stream con ETag.
+- Añadidos selector y previews locales, fallo parcial recuperable, galería responsive, thumbnails en cards y gestión accesible de imágenes propias.
+- El milestone permanece abierto hasta su bloque de cierre y verificación final.
+
 ## Milestone 6
 
 - Sustituido el scaffold de Vite por una interfaz responsive con routing, autenticación, exploración, detalle y gestión de publicaciones.

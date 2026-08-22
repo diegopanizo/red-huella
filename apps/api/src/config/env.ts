@@ -1,10 +1,14 @@
 import dotenv from 'dotenv'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
 
 dotenv.config({
   path: new URL('../../../../.env', import.meta.url),
   quiet: true,
 })
+
+const repositoryRoot = fileURLToPath(new URL('../../../../', import.meta.url))
 
 const postgresUrlSchema = z.string().refine(
   (value) => {
@@ -34,6 +38,13 @@ const environmentSchema = z.object({
     'trace',
     'silent',
   ]),
+  IMAGE_STORAGE_DRIVER: z.literal('local').default('local'),
+  IMAGE_STORAGE_LOCAL_ROOT: z
+    .string()
+    .trim()
+    .min(1)
+    .default('.data/uploads')
+    .transform((value) => path.resolve(repositoryRoot, value)),
 })
 
 export type Environment = z.infer<typeof environmentSchema>

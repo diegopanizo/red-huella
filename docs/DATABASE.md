@@ -2,7 +2,7 @@
 
 ## Operaciones funcionales de publicaciones
 
-El modelo existente `User 1—N Publication N—1 Animal` no cambia y este milestone no requiere migration. Crear animal/publicación y editar ambos son transacciones Drizzle: un fallo revierte todo y evita animales o cambios parciales. `updated_at` se asigna explícitamente al editar publicación/animal. Las imágenes existentes se leen por posición, pero no existe upload.
+El modelo `User 1—N Publication N—1 Animal` se conserva. La migración aditiva del Milestone 7 almacena metadatos de las dos variantes de imagen y una outbox de borrado. El Bloque 3 implementa el repositorio transaccional y el upload HTTP sin alterar las migraciones aplicadas. Crear animal/publicación y editar ambos continúan siendo transacciones Drizzle.
 
 `approximate_age` conserva la unidad definida en el modelo inicial: meses. La API limita el valor a 0–600 meses. `resolved_at` se establece para `RESOLVED`/`ADOPTED`; archivar lo mantiene null.
 
@@ -118,7 +118,11 @@ Un animal puede aparecer en varias publicaciones a lo largo del tiempo. `event_d
 
 ### Imágenes
 
-PostgreSQL solo almacena un `storage_key` neutral, nunca binarios ni URLs de proveedor. `position >= 0`, la pareja `(publication_id, position)` es única y `storage_key` no se repite. El límite máximo de imágenes será una regla de aplicación porque depende del producto.
+PostgreSQL solo almacena metadatos y keys neutrales, nunca binarios, originales ni URLs de proveedor. `storage_key` identifica `display.webp` y `thumbnail_storage_key` su thumbnail. Ambas son únicas. MIME normalizado es `image/webp`; dimensiones, bytes y SHA-256 se almacenan separadamente por variante para integridad y ETag independientes.
+
+Las columnas añadidas son nullable para aceptar filas legacy sin metadatos. Los `CHECK` exigen que cada grupo esté completamente vacío o completamente informado, dimensiones positivas dentro de 2048/640 px, bytes positivos y checksum hexadecimal de 64 caracteres. Las nuevas escrituras deberán completar ambas variantes. `position >= 0`, `(publication_id, position)` es única y `position = 0` es la principal. El máximo de seis imágenes se impondrá en aplicación y transacción.
+
+`storage_deletion_jobs` es exclusivamente una outbox pequeña para borrar objetos: key, intentos, próximo intento, último error sanitizado, creación y finalización. No tiene FK porque debe sobrevivir al metadato eliminado. Un índice por finalización/próximo intento soporta el consumo de pendientes. Delete elimina metadata, compacta posiciones y crea jobs para display/thumbnail dentro de una única transacción; el servicio intenta procesarlos tras commit y deja los fallidos pendientes. No existe cron ni framework genérico de workers.
 
 ## Timestamps
 
@@ -144,7 +148,7 @@ No se añaden índices combinados sin queries y mediciones reales.
 
 ## Migrations
 
-La migration inicial es `apps/api/src/database/migrations/0000_blue_wolfsbane.sql`. Flujo:
+Las migrations aplicadas no se modifican. `0002_abandoned_raider.sql` añade los metadatos de imagen y `storage_deletion_jobs`. Flujo:
 
 ```bash
 npm run db:generate
@@ -155,7 +159,7 @@ Se revisa el SQL generado y no se usa `db push` como flujo principal.
 
 ## Seed
 
-`npm run db:seed` inserta mediante `ON CONFLICT DO NOTHING` dos usuarios `USER` sin contraseña, tres animales, tres publicaciones y dos claves de imagen sintéticas. Es explícito, repetible y está bloqueado si `NODE_ENV=production`.
+`npm run db:seed` inserta mediante `ON CONFLICT DO NOTHING` dos usuarios `USER` sin contraseña, tres animales y tres publicaciones. No crea imágenes ficticias ni incluye binarios demo. Es explícito, repetible y está bloqueado si `NODE_ENV=production`.
 
 ## Desarrollo y tests
 
@@ -163,6 +167,6 @@ La aplicación consume exclusivamente `DATABASE_URL`, ya apunte a Windows, Docke
 
 ## Evolución futura
 
-- PostGIS y ubicación pública aproximada: Milestone 7.
+- PostGIS y ubicación pública aproximada: Milestone 8 tras el cambio de orden registrado en ADR-021.
 - `favorites`, `reports`, `shelters` y `matches`: milestones posteriores.
 - pgvector y embeddings: Milestone 14, condicionado a evaluación técnica y de privacidad.

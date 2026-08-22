@@ -11,12 +11,14 @@ import { requestLogger } from './middleware/request-logger.js'
 import { createHealthRouter } from './routes/health.routes.js'
 import { createAuthRouter } from './routes/auth.routes.js'
 import { createPublicationRouter } from './routes/publication.routes.js'
+import { createPublicationImageContentRouter } from './routes/publication-image.routes.js'
 import { HealthService } from './services/health.service.js'
 
 export interface AppDependencies {
   healthService?: HealthService
   authRouter?: express.Router
   publicationRouter?: express.Router
+  publicationImageContentRouter?: express.Router
 }
 
 export function createApp(dependencies: AppDependencies = {}) {
@@ -41,6 +43,11 @@ export function createApp(dependencies: AppDependencies = {}) {
   app.use(
     '/api/v1/publications',
     dependencies.publicationRouter ?? createPublicationRouter(),
+  )
+  app.use(
+    '/api/v1/publication-images',
+    dependencies.publicationImageContentRouter ??
+      createPublicationImageContentRouter(),
   )
   app.use(notFound)
   app.use(errorHandler)

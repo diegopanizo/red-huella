@@ -6,6 +6,14 @@ export type User = {
 }
 export type PublicationType = 'LOST' | 'FOUND' | 'ADOPTION'
 export type PublicationStatus = 'ACTIVE' | 'RESOLVED' | 'ADOPTED' | 'ARCHIVED'
+export type PublicationImage = {
+  id: string
+  position: number
+  url: string
+  thumbnailUrl: string
+  width: number | null
+  height: number | null
+}
 export type Publication = {
   id: string
   type: PublicationType
@@ -29,7 +37,7 @@ export type Publication = {
     description: string | null
   }
   author: { id: string; name: string; role: User['role'] }
-  images: { id: string; storageKey: string; position: number }[]
+  images: PublicationImage[]
 }
 export type PublicationList = {
   items: Publication[]

@@ -1,4 +1,5 @@
 import type { PublicationAggregate } from '../repositories/contracts/publication.repository.js'
+import { toPublicImageDto } from '../images/image-dto.js'
 
 export function toPublicPublicationDto(value: PublicationAggregate) {
   const { publication, animal, author, images } = value
@@ -28,11 +29,7 @@ export function toPublicPublicationDto(value: PublicationAggregate) {
       description: animal.description,
     },
     author,
-    images: images.map(({ id, storageKey, position }) => ({
-      id,
-      storageKey,
-      position,
-    })),
+    images: images.map(toPublicImageDto),
   }
 }
 
