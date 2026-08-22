@@ -220,7 +220,7 @@ function publication(overrides: Partial<Publication> = {}): Publication {
     createdAt: '2026-08-20T10:00:00Z',
     updatedAt: '2026-08-20T10:00:00Z',
     resolvedAt: null,
-    location: null,
+    publicLocation: null,
     animal: {
       id: 'animal-id',
       name: 'Rocky',

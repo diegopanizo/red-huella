@@ -1,5 +1,13 @@
 # Registro de decisiones arquitectónicas
 
+## ADR-022 — Estrategia geoespacial y privacidad de ubicación
+
+**Status:** Accepted
+
+**Decision:** Usar PostGIS con `geography(Point,4326)` y separar `exact_location` de una `public_location` aleatoria, persistida y versionada. LOST conserva exacta y publica una zona de 1.000 m; FOUND, 1.500 m; ADOPTION no conserva domicilio exacto y publica una zona de 5.000 m. Toda operación geográfica pública usa exclusivamente `public_location`, con GiST y `ST_DWithin`.
+
+**Consequences:** La distancia pública es aproximada y la API pública nunca devuelve `exactLocation`. `0003`, el backfill y `/api/v1/publications/:id/manage` están implementados y validados; PostGIS pasa a ser requisito operativo. La decisión completa está en [ADR-022](ADR-022-GEOSPATIAL-LOCATION-PRIVACY.md).
+
 ## ADR-021 — Imágenes normalizadas y almacenamiento desacoplado
 
 **Status:** Accepted

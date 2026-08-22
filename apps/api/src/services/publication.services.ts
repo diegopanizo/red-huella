@@ -1,5 +1,6 @@
 import {
   toPublicPublicationDto,
+  toManagePublicationDto,
   type PublicPublicationDto,
 } from '../publications/dto.js'
 import {
@@ -21,6 +22,19 @@ import type {
   PublicationRepository,
   UpdatePublicationData,
 } from '../repositories/contracts/publication.repository.js'
+import { LocationPrivacyService } from '../locations/location-privacy-policy.js'
+
+function locationPersistence(
+  policy: ReturnType<LocationPrivacyService['apply']>,
+) {
+  return {
+    latitude: null,
+    longitude: null,
+    exactLocation: policy.exactLocation,
+    publicLocation: policy.publicLocation,
+    locationPrivacyVersion: policy.privacyVersion,
+  }
+}
 
 export interface CreatePublicationCommand {
   userId: string
@@ -47,7 +61,10 @@ function assertEventDate(
 }
 
 export class CreatePublicationService {
-  constructor(private readonly publications: PublicationRepository) {}
+  constructor(
+    private readonly publications: PublicationRepository,
+    private readonly locationPrivacy = new LocationPrivacyService(),
+  ) {}
   async execute(
     command: CreatePublicationCommand,
     now = new Date(),
@@ -63,8 +80,12 @@ export class CreatePublicationService {
             ? { description: command.description }
             : {}),
           eventDate: command.eventDate,
-          latitude: command.location?.latitude ?? null,
-          longitude: command.location?.longitude ?? null,
+          ...locationPersistence(
+            this.locationPrivacy.apply({
+              type: command.type,
+              location: command.location ?? null,
+            }),
+          ),
           status: 'ACTIVE',
         },
         command.animal,
@@ -80,6 +101,17 @@ export class GetPublicationService {
     if (!result || result.publication.status === 'ARCHIVED')
       throw new PublicationNotFoundError()
     return toPublicPublicationDto(result)
+  }
+}
+
+export class ManagePublicationService {
+  constructor(private readonly publications: PublicationRepository) {}
+  async execute(id: string, userId: string) {
+    const result = await this.publications.findManageAggregateById(id)
+    if (!result) throw new PublicationNotFoundError()
+    if (result.publication.userId !== userId)
+      throw new PublicationForbiddenError()
+    return toManagePublicationDto(result)
   }
 }
 
@@ -119,6 +151,7 @@ export class ListPublicationsService {
 }
 
 export interface UpdatePublicationCommand {
+  type?: 'LOST' | 'FOUND' | 'ADOPTION' | undefined
   title?: string | undefined
   description?: string | null | undefined
   eventDate?: Date | undefined
@@ -127,29 +160,67 @@ export interface UpdatePublicationCommand {
 }
 
 export class UpdatePublicationService {
-  constructor(private readonly publications: PublicationRepository) {}
+  constructor(
+    private readonly publications: PublicationRepository,
+    private readonly locationPrivacy = new LocationPrivacyService(),
+  ) {}
   async execute(
     id: string,
     userId: string,
     command: UpdatePublicationCommand,
     now = new Date(),
   ) {
-    const existing = await this.publications.findAggregateById(id)
+    const existing = await this.publications.findManageAggregateById(id)
     if (!existing) throw new PublicationNotFoundError()
     if (existing.publication.userId !== userId)
       throw new PublicationForbiddenError()
     if (existing.publication.status !== 'ACTIVE')
       throw new InvalidPublicationStatusTransitionError()
-    if (command.eventDate)
-      assertEventDate(existing.publication.type, command.eventDate, now)
+    const finalType = command.type ?? existing.publication.type
+    if (command.eventDate) assertEventDate(finalType, command.eventDate, now)
     const update: UpdatePublicationData = { updatedAt: now }
+    if (command.type !== undefined) update.type = command.type
     if (command.title !== undefined) update.title = command.title
     if (command.description !== undefined)
       update.description = command.description
     if (command.eventDate !== undefined) update.eventDate = command.eventDate
-    if (command.location !== undefined) {
-      update.latitude = command.location?.latitude ?? null
-      update.longitude = command.location?.longitude ?? null
+    if (command.location !== undefined || command.type !== undefined) {
+      const policyInputLocation =
+        command.location !== undefined
+          ? command.location
+          : existing.publication.exactLocation
+      if (
+        command.type !== undefined &&
+        command.type !== 'ADOPTION' &&
+        command.location === undefined &&
+        policyInputLocation === null
+      )
+        throw new PublicationValidationError(
+          'El nuevo tipo requiere indicar una ubicación exacta o eliminarla explícitamente',
+        )
+      const existingPublicLocation =
+        existing.publication.publicLocation === null ||
+        existing.publication.publicLocation === undefined ||
+        existing.publication.publicLocationRadiusMeters === null ||
+        existing.publication.publicLocationRadiusMeters === undefined
+          ? null
+          : {
+              ...existing.publication.publicLocation,
+              radiusMeters: existing.publication.publicLocationRadiusMeters,
+            }
+      Object.assign(
+        update,
+        locationPersistence(
+          this.locationPrivacy.apply({
+            type: finalType,
+            location: policyInputLocation,
+            existing: {
+              publicLocation: existingPublicLocation,
+              privacyVersion: existing.publication.locationPrivacyVersion,
+            },
+          }),
+        ),
+      )
     }
     return toPublicPublicationDto(
       await this.publications.updateWithAnimal(id, update, command.animal),

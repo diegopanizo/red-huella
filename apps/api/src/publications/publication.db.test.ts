@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 
-import { count } from 'drizzle-orm'
+import { count, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
@@ -217,6 +217,276 @@ describe('publication HTTP API with PostgreSQL', () => {
         expect.objectContaining({ id: archivedId, status: 'ARCHIVED' }),
       ]),
     )
+  })
+
+  it('applies location privacy on create and exposes exact location only through owner manage', async () => {
+    const owner = await register('geo-owner@example.test')
+    const other = await register('geo-other@example.test')
+
+    for (const type of ['LOST', 'FOUND', 'ADOPTION'] as const) {
+      const created = await owner.agent
+        .post('/api/v1/publications')
+        .set('Origin', env.WEB_ORIGIN)
+        .send(payload(type, `Ubicación ${type}`))
+      expect(created.status).toBe(201)
+      expect(created.body.publication.publicLocation.radiusMeters).toBe(
+        type === 'LOST' ? 1_000 : type === 'FOUND' ? 1_500 : 5_000,
+      )
+      expect(created.body.publication).not.toHaveProperty('exactLocation')
+      const id = created.body.publication.id as string
+      const persisted = await publications.findById(id)
+      expect(persisted?.exactLocation === null).toBe(type === 'ADOPTION')
+
+      const manage = await owner.agent.get(`/api/v1/publications/${id}/manage`)
+      expect(manage.status).toBe(200)
+      expect(manage.headers['cache-control']).toBe('private, no-store')
+      expect(manage.body.publication.exactLocation === null).toBe(
+        type === 'ADOPTION',
+      )
+      expect(manage.body.publication).not.toHaveProperty(
+        'locationPrivacyVersion',
+      )
+      expect(JSON.stringify(manage.body)).not.toMatch(/EWK[BT]|geography/i)
+      expect(
+        (await request(app).get(`/api/v1/publications/${id}/manage`)).status,
+      ).toBe(401)
+      expect(
+        (await other.agent.get(`/api/v1/publications/${id}/manage`)).status,
+      ).toBe(403)
+    }
+
+    const withoutLocation = await owner.agent
+      .post('/api/v1/publications')
+      .set('Origin', env.WEB_ORIGIN)
+      .send({ ...payload('LOST', 'Sin ubicación'), location: undefined })
+    expect(withoutLocation.status).toBe(201)
+    expect(withoutLocation.body.publication.publicLocation).toBeNull()
+
+    for (const protectedField of [
+      'exactLocation',
+      'publicLocation',
+      'publicLocationRadiusMeters',
+      'locationPrivacyVersion',
+      'geography',
+      'WKT',
+      'EWKT',
+      'EWKB',
+    ]) {
+      const rejected = await owner.agent
+        .post('/api/v1/publications')
+        .set('Origin', env.WEB_ORIGIN)
+        .send({
+          ...payload('LOST', `Campo protegido ${protectedField}`),
+          [protectedField]: 'POINT(0 0)',
+        })
+      expect(rejected.status).toBe(400)
+    }
+  })
+
+  it('updates locations stably and reapplies privacy for the final type atomically', async () => {
+    const owner = await register('geo-update@example.test')
+    const other = await register('geo-update-other@example.test')
+    const created = await owner.agent
+      .post('/api/v1/publications')
+      .set('Origin', env.WEB_ORIGIN)
+      .send(payload('LOST', 'Ubicación editable'))
+    const id = created.body.publication.id as string
+    const firstManage = await owner.agent.get(
+      `/api/v1/publications/${id}/manage`,
+    )
+    const firstPublic = firstManage.body.publication.publicLocation as {
+      latitude: number
+      longitude: number
+      radiusMeters: number
+    }
+
+    const kept = await owner.agent
+      .patch(`/api/v1/publications/${id}`)
+      .set('Origin', env.WEB_ORIGIN)
+      .send({
+        location: {
+          latitude: firstPublic.latitude,
+          longitude: firstPublic.longitude,
+        },
+      })
+    expect(kept.status).toBe(200)
+    expect(kept.body.publication.publicLocation).toEqual(firstPublic)
+
+    const regenerated = await owner.agent
+      .patch(`/api/v1/publications/${id}`)
+      .set('Origin', env.WEB_ORIGIN)
+      .send({ location: { latitude: 10, longitude: 10 } })
+    expect(regenerated.status).toBe(200)
+    expect(regenerated.body.publication.publicLocation).not.toEqual(firstPublic)
+
+    expect(
+      (
+        await other.agent
+          .patch(`/api/v1/publications/${id}`)
+          .set('Origin', env.WEB_ORIGIN)
+          .send({ location: { latitude: 0, longitude: 0 } })
+      ).status,
+    ).toBe(403)
+    expect(
+      (
+        await owner.agent
+          .patch(`/api/v1/publications/${id}`)
+          .set('Origin', env.WEB_ORIGIN)
+          .send({ location: { latitude: 91, longitude: 0 } })
+      ).status,
+    ).toBe(400)
+
+    const adoption = await owner.agent
+      .patch(`/api/v1/publications/${id}`)
+      .set('Origin', env.WEB_ORIGIN)
+      .send({ type: 'ADOPTION' })
+    expect(adoption.status).toBe(200)
+    expect(adoption.body.publication.publicLocation.radiusMeters).toBe(5_000)
+    expect((await publications.findById(id))?.exactLocation).toBeNull()
+
+    expect(
+      (
+        await owner.agent
+          .patch(`/api/v1/publications/${id}`)
+          .set('Origin', env.WEB_ORIGIN)
+          .send({ type: 'LOST' })
+      ).status,
+    ).toBe(400)
+    const lostAgain = await owner.agent
+      .patch(`/api/v1/publications/${id}`)
+      .set('Origin', env.WEB_ORIGIN)
+      .send({
+        type: 'LOST',
+        location: { latitude: 40.4, longitude: -3.7 },
+      })
+    expect(lostAgain.status).toBe(200)
+    expect((await publications.findById(id))?.exactLocation).not.toBeNull()
+
+    const removed = await owner.agent
+      .patch(`/api/v1/publications/${id}`)
+      .set('Origin', env.WEB_ORIGIN)
+      .send({ location: null })
+    expect(removed.status).toBe(200)
+    expect(removed.body.publication.publicLocation).toBeNull()
+    expect((await publications.findById(id))?.exactLocation).toBeNull()
+  })
+
+  it('searches and orders exclusively by public_location with rounded public distance', async () => {
+    const user = await users.create({
+      name: 'Geo Search',
+      email: 'geo-search@example.test',
+    })
+    const createSpatial = async (input: {
+      title: string
+      type?: 'LOST' | 'FOUND'
+      species?: 'DOG' | 'CAT'
+      exact: { latitude: number; longitude: number }
+      publicPoint?: { latitude: number; longitude: number }
+    }) =>
+      publications.createWithAnimal(
+        {
+          userId: user.id,
+          type: input.type ?? 'LOST',
+          title: input.title,
+          eventDate: new Date('2026-08-20T10:00:00Z'),
+          exactLocation: input.exact,
+          publicLocation: input.publicPoint
+            ? { ...input.publicPoint, radiusMeters: 1_000 }
+            : null,
+          locationPrivacyVersion: input.publicPoint ? 1 : null,
+        },
+        { species: input.species ?? 'DOG' },
+      )
+
+    const exactFarPublicNear = await createSpatial({
+      title: 'Exacta lejos, pública cerca',
+      exact: { latitude: 50, longitude: 50 },
+      publicPoint: { latitude: 0, longitude: 0.0044 },
+    })
+    await createSpatial({
+      title: 'Exacta cerca, pública lejos',
+      exact: { latitude: 0, longitude: 0 },
+      publicPoint: { latitude: 1, longitude: 1 },
+    })
+    const sameDistanceOlder = await createSpatial({
+      title: 'Misma distancia anterior',
+      exact: { latitude: 20, longitude: 20 },
+      publicPoint: { latitude: 0, longitude: 0.0044 },
+    })
+    const withoutPublic = await createSpatial({
+      title: 'Sin ubicación pública',
+      exact: { latitude: 0, longitude: 0 },
+    })
+    const archived = await createSpatial({
+      title: 'Archivada cercana',
+      exact: { latitude: 30, longitude: 30 },
+      publicPoint: { latitude: 0, longitude: 0.001 },
+    })
+    await database
+      .update(schema.publications)
+      .set({ createdAt: new Date('2026-01-01T00:00:00Z') })
+      .where(eq(schema.publications.id, exactFarPublicNear.publication.id))
+    await database
+      .update(schema.publications)
+      .set({ createdAt: new Date('2026-01-02T00:00:00Z') })
+      .where(eq(schema.publications.id, sameDistanceOlder.publication.id))
+    await publications.updateStatus(
+      archived.publication.id,
+      'ARCHIVED',
+      null,
+      new Date(),
+    )
+
+    const search = await request(app).get('/api/v1/publications').query({
+      latitude: 0,
+      longitude: 0,
+      radiusMeters: 500,
+      type: 'LOST',
+      species: 'DOG',
+      status: 'ACTIVE',
+      order: 'distance',
+    })
+    expect(search.status).toBe(200)
+    expect(search.body.items.map((item: { id: string }) => item.id)).toEqual([
+      sameDistanceOlder.publication.id,
+      exactFarPublicNear.publication.id,
+    ])
+    expect(search.body.items[0].distanceMeters % 100).toBe(0)
+    expect(search.body.items[0].distanceMeters).toBe(500)
+    expect(search.body.items).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: withoutPublic.publication.id }),
+        expect.objectContaining({ id: archived.publication.id }),
+      ]),
+    )
+    const serialized = JSON.stringify(search.body)
+    expect(serialized).not.toMatch(
+      /exactLocation|exact_location|latitude":50|longitude":50|EWK[BT]|POINT\(/,
+    )
+
+    for (const radiusMeters of [500, 100_000])
+      expect(
+        (
+          await request(app).get('/api/v1/publications').query({
+            latitude: 0,
+            longitude: 0,
+            radiusMeters,
+          })
+        ).status,
+      ).toBe(200)
+    for (const query of [
+      { latitude: 0 },
+      { latitude: 0, longitude: 0 },
+      { radiusMeters: 1_000 },
+      { order: 'distance' },
+      { latitude: 0, longitude: 0, radiusMeters: 499 },
+      { latitude: 0, longitude: 0, radiusMeters: 100_001 },
+      { latitude: 'NaN', longitude: 0, radiusMeters: 500 },
+      { latitude: 'Infinity', longitude: 0, radiusMeters: 500 },
+    ])
+      expect(
+        (await request(app).get('/api/v1/publications').query(query)).status,
+      ).toBe(400)
   })
 
   it('rolls back animal creation when publication insertion fails', async () => {

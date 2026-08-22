@@ -1,6 +1,6 @@
 # AGENTS.md — Guía de desarrollo de Red Huella
 
-Estado: Milestone 6 implementado; el siguiente alcance es Milestone 7, sujeto a aprobación. El frontend consume la API mediante cookies HttpOnly y el backend conserva toda autoridad de autenticación y ownership.
+Estado: Milestone 8 implementado y cerrado; cualquier milestone posterior requiere alcance aprobado. El frontend consume la API mediante cookies HttpOnly y el backend conserva toda autoridad de autenticación y ownership.
 
 Este archivo contiene reglas obligatorias para cualquier persona o agente que modifique el repositorio. Antes de cambiar código, se debe inspeccionar el estado real y respetar el alcance del milestone activo.
 
@@ -36,6 +36,8 @@ Nunca:
 - afirmar que un control está implementado sin evidencia en el repositorio.
 
 Aplicar mínimo privilegio, defensa en profundidad, Secure by Design y Privacy by Design. Toda entrada debe validarse en servidor. Consultar `SECURITY.md` y `docs/PRIVACY.md` antes de trabajar con identidad, uploads, ubicación o logs.
+
+Toda funcionalidad geográfica pública debe usar exclusivamente `public_location`. `exact_location` nunca debe participar en respuestas, filtros, orden, mapas o distancias públicas.
 
 ## Persistencia y backend
 

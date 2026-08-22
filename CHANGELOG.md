@@ -1,5 +1,13 @@
 # Changelog
 
+## Milestone 8 — completado
+
+- Incorporados PostgreSQL 17 + PostGIS, `geography(Point,4326)` e índice GiST sobre `public_location` mediante la migración `0003`.
+- Separadas `exact_location` privada y `public_location` aproximada, aleatoria, persistida y versionada, con radios por tipo y DTOs públicos allowlist.
+- Añadidos create/PATCH geográficos, endpoint owner `/manage`, búsqueda `ST_DWithin`, distancia pública redondeada y `order=distance`.
+- Añadidos `LocationPicker`, fallback manual, geolocalización voluntaria, `PublicLocationMap` y búsqueda «Buscar cerca de mí» con radios configurables.
+- Aplicados y verificados el backfill legacy idempotente y la limpieza de `latitude`/`longitude` migradas; las columnas se conservan temporalmente para retirada en una migración futura.
+
 ## Milestone 7 — en curso
 
 - Añadidos almacenamiento local desacoplado, normalización WebP segura, metadata por variante y outbox específica de borrado.

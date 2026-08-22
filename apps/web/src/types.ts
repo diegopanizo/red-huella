@@ -6,6 +6,8 @@ export type User = {
 }
 export type PublicationType = 'LOST' | 'FOUND' | 'ADOPTION'
 export type PublicationStatus = 'ACTIVE' | 'RESOLVED' | 'ADOPTED' | 'ARCHIVED'
+export type Location = { latitude: number; longitude: number }
+export type PublicLocation = Location & { radiusMeters: number }
 export type PublicationImage = {
   id: string
   position: number
@@ -24,7 +26,8 @@ export type Publication = {
   createdAt: string
   updatedAt: string
   resolvedAt: string | null
-  location: { latitude: number; longitude: number | null } | null
+  publicLocation: PublicLocation | null
+  distanceMeters?: number
   animal: {
     id: string
     name: string | null
@@ -38,6 +41,9 @@ export type Publication = {
   }
   author: { id: string; name: string; role: User['role'] }
   images: PublicationImage[]
+}
+export type ManagePublication = Publication & {
+  exactLocation: Location | null
 }
 export type PublicationList = {
   items: Publication[]

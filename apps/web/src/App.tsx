@@ -12,7 +12,7 @@ import {
   useParams,
   useSearchParams,
 } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { useAuth } from './features/auth/AuthProvider'
 import {
@@ -22,6 +22,8 @@ import {
   PublicationGallery,
 } from './features/images/PublicationImages'
 import { usePendingImages } from './features/images/usePendingImages'
+import { LocationPicker } from './features/locations/LocationPicker'
+import { PublicLocationMap } from './features/locations/PublicLocationMap'
 import { api, ApiError, resolveApiAssetUrl } from './services/api'
 import type { Publication, PublicationStatus, PublicationType } from './types'
 import './App.css'
@@ -37,11 +39,29 @@ const labels = {
   DOG: 'Perro',
   CAT: 'Gato',
   OTHER: 'Otro',
+  MALE: 'Macho',
+  FEMALE: 'Hembra',
+  UNKNOWN: 'Sexo desconocido',
 } as const
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' }).format(
     new Date(value),
   )
+const formatDistance = (meters: number) =>
+  meters < 1_000
+    ? 'menos de 1 km'
+    : `Aprox. ${new Intl.NumberFormat('es-ES', {
+        maximumFractionDigits: meters < 10_000 ? 1 : 0,
+      }).format(meters / 1_000)} km`
+const publicationLocationSchema = z.object({
+  location: z
+    .object({
+      latitude: z.number().finite().min(-90).max(90),
+      longitude: z.number().finite().min(-180).max(180),
+    })
+    .nullable(),
+})
+type PublicationLocationFields = z.infer<typeof publicationLocationSchema>
 
 function Alert({ error }: { error: unknown }) {
   if (!error) return null
@@ -161,16 +181,31 @@ function Card({ publication }: { publication: Publication }) {
           </Link>
         </h2>
         <p>{publication.title}</p>
-        <dl>
-          <div>
-            <dt>Especie</dt>
-            <dd>{labels[publication.animal.species]}</dd>
+        <p className="card-taxonomy">
+          {[
+            labels[publication.type],
+            labels[publication.animal.species],
+            publication.animal.breed?.trim() || null,
+          ]
+            .filter((value): value is string => Boolean(value))
+            .join(' · ')}
+        </p>
+        <p className="card-secondary">
+          {formatDate(publication.eventDate)} · {labels[publication.animal.sex]}
+        </p>
+        {(publication.publicLocation ||
+          publication.distanceMeters !== undefined) && (
+          <div className="card-location" aria-label="Información de ubicación">
+            {publication.publicLocation && (
+              <span>Zona aproximada protegida</span>
+            )}
+            {publication.distanceMeters !== undefined && (
+              <span title="Distancia al centro de la zona pública aproximada">
+                Cerca de ti · {formatDistance(publication.distanceMeters)}
+              </span>
+            )}
           </div>
-          <div>
-            <dt>Fecha</dt>
-            <dd>{formatDate(publication.eventDate)}</dd>
-          </div>
-        </dl>
+        )}
         <p className="author">Publicado por {publication.author.name}</p>
       </div>
     </article>
@@ -190,9 +225,36 @@ function PublicationGrid({ items }: { items: Publication[] }) {
 
 function Home() {
   const [params, setParams] = useSearchParams()
-  const query = params.toString()
+  const queryClient = useQueryClient()
+  const [nearby, setNearby] = React.useState<{
+    latitude: number
+    longitude: number
+    radiusMeters: number
+  } | null>(null)
+  const [geolocationStatus, setGeolocationStatus] = React.useState<
+    'idle' | 'loading'
+  >('idle')
+  const [geolocationError, setGeolocationError] = React.useState<string>()
+  const requestParams = new URLSearchParams(params)
+  if (nearby) {
+    requestParams.set('latitude', String(nearby.latitude))
+    requestParams.set('longitude', String(nearby.longitude))
+    requestParams.set('radiusMeters', String(nearby.radiusMeters))
+    requestParams.set('order', 'distance')
+  }
+  const query = requestParams.toString()
   const result = useQuery({
-    queryKey: ['publications', query],
+    queryKey: [
+      'publications',
+      {
+        filters: params.toString(),
+        latitude: nearby?.latitude ?? null,
+        longitude: nearby?.longitude ?? null,
+        radiusMeters: nearby?.radiusMeters ?? null,
+        order: nearby ? 'distance' : (params.get('order') ?? 'newest'),
+        page: Number(params.get('page') ?? 1),
+      },
+    ],
     queryFn: () => api.publications(query),
   })
   const page = Number(params.get('page') ?? 1)
@@ -202,6 +264,50 @@ function Home() {
     else next.delete(key)
     if (key !== 'page') next.set('page', '1')
     setParams(next)
+  }
+  const searchNearby = () => {
+    if (!navigator.geolocation) return
+    setGeolocationStatus('loading')
+    setGeolocationError(undefined)
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setNearby({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          radiusMeters: 25_000,
+        })
+        update('page', '1')
+        setGeolocationStatus('idle')
+      },
+      (error) => {
+        setGeolocationStatus('idle')
+        setGeolocationError(
+          error.code === 1
+            ? 'Permiso de ubicación denegado. El listado normal sigue disponible.'
+            : error.code === 3
+              ? 'La geolocalización tardó demasiado. Puedes volver a intentarlo.'
+              : 'No se pudo obtener tu ubicación. El listado normal sigue disponible.',
+        )
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    )
+  }
+  const removeNearby = () => {
+    setNearby(null)
+    setGeolocationError(undefined)
+    queryClient.removeQueries({
+      queryKey: ['publications'],
+      predicate: (query) => {
+        const state = query.queryKey[1]
+        return (
+          typeof state === 'object' &&
+          state !== null &&
+          'latitude' in state &&
+          state.latitude !== null
+        )
+      },
+    })
+    update('page', '1')
   }
   return (
     <>
@@ -258,17 +364,84 @@ function Home() {
             </select>
           </label>
           <label>
+            Estado
+            <select
+              value={params.get('status') ?? ''}
+              onChange={(e) => update('status', e.target.value)}
+            >
+              <option value="">Todos</option>
+              <option value="ACTIVE">Activas</option>
+              <option value="RESOLVED">Resueltas</option>
+              <option value="ADOPTED">Adoptadas</option>
+            </select>
+          </label>
+          <label>
             Orden
             <select
-              value={params.get('order') ?? 'newest'}
+              value={nearby ? 'distance' : (params.get('order') ?? 'newest')}
               onChange={(e) => update('order', e.target.value)}
+              disabled={nearby !== null}
             >
+              {nearby && <option value="distance">Cercanía</option>}
               <option value="newest">Más recientes</option>
               <option value="oldest">Más antiguas</option>
               <option value="eventDate">Fecha del suceso</option>
             </select>
           </label>
         </div>
+        <div className="nearby-search">
+          {nearby ? (
+            <>
+              <div>
+                <strong>Buscando publicaciones cerca de tu ubicación</strong>
+                <span>Ordenadas por cercanía</span>
+              </div>
+              <label>
+                Radio de búsqueda
+                <select
+                  value={nearby.radiusMeters}
+                  onChange={(event) => {
+                    const radiusMeters = Number(event.target.value)
+                    setNearby({ ...nearby, radiusMeters })
+                    update('page', '1')
+                  }}
+                >
+                  <option value="5000">5 km</option>
+                  <option value="10000">10 km</option>
+                  <option value="25000">25 km</option>
+                  <option value="50000">50 km</option>
+                  <option value="100000">100 km</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                className="secondary"
+                onClick={removeNearby}
+              >
+                Quitar búsqueda por cercanía
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={searchNearby}
+              disabled={
+                !navigator.geolocation || geolocationStatus === 'loading'
+              }
+            >
+              {!navigator.geolocation
+                ? 'Búsqueda cercana no disponible'
+                : geolocationStatus === 'loading'
+                  ? 'Obteniendo ubicación…'
+                  : 'Buscar cerca de mí'}
+            </button>
+          )}
+        </div>
+        {geolocationError && (
+          <p className="alert" role="alert">
+            {geolocationError}
+          </p>
+        )}
         {result.isLoading ? (
           <Spinner />
         ) : result.isError ? (
@@ -497,6 +670,16 @@ function Detail() {
               <dt>Especie</dt>
               <dd>{labels[item.animal.species]}</dd>
             </div>
+            {item.animal.breed?.trim() && (
+              <div>
+                <dt>Raza</dt>
+                <dd>{item.animal.breed}</dd>
+              </div>
+            )}
+            <div>
+              <dt>Sexo</dt>
+              <dd>{labels[item.animal.sex]}</dd>
+            </div>
             <div>
               <dt>Fecha del suceso</dt>
               <dd>{formatDate(item.eventDate)}</dd>
@@ -505,12 +688,10 @@ function Detail() {
               <dt>Autor</dt>
               <dd>{item.author.name}</dd>
             </div>
-            {item.location && (
+            {item.publicLocation && (
               <div>
-                <dt>Ubicación provisional</dt>
-                <dd>
-                  {item.location.latitude}, {item.location.longitude}
-                </dd>
+                <dt>Ubicación</dt>
+                <dd>Zona aproximada protegida</dd>
               </div>
             )}
             {item.resolvedAt && (
@@ -520,6 +701,12 @@ function Detail() {
               </div>
             )}
           </dl>
+          {item.publicLocation && (
+            <PublicLocationMap
+              publicLocation={item.publicLocation}
+              type={item.type}
+            />
+          )}
           {owner && item.status === 'ACTIVE' && (
             <div className="actions">
               <button onClick={() => navigate(`/publications/${id}/edit`)}>
@@ -553,14 +740,37 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
   const auth = useAuth()
   const client = useQueryClient()
   const pendingImages = usePendingImages()
+  const [publicationType, setPublicationType] =
+    React.useState<PublicationType>('LOST')
+  const locationForm = useForm<PublicationLocationFields>({
+    resolver: zodResolver(publicationLocationSchema),
+    defaultValues: { location: null },
+  })
+  const selectedLocation =
+    useWatch({ control: locationForm.control, name: 'location' }) ?? null
+  const [locationIntent, setLocationIntent] = React.useState<
+    'unchanged' | 'set' | 'remove'
+  >('unchanged')
+  const [locationError, setLocationError] = React.useState<string>()
+  const initializedPublication = React.useRef<string | undefined>(undefined)
   const [createdPublicationId, setCreatedPublicationId] =
     React.useState<string>()
   const existing = useQuery({
-    queryKey: ['publication', id],
-    queryFn: () => api.publication(id),
+    queryKey: ['publication-manage', id],
+    queryFn: () => api.managePublication(id),
     enabled: edit,
     retry: false,
   })
+  React.useEffect(() => {
+    const item = existing.data?.publication
+    if (!item || initializedPublication.current === item.id) return
+    initializedPublication.current = item.id
+    setPublicationType(item.type)
+    locationForm.reset({
+      location: item.type === 'ADOPTION' ? null : item.exactLocation,
+    })
+    setLocationIntent('unchanged')
+  }, [existing.data, locationForm])
   const mutation = useMutation({
     mutationFn: async (body: unknown) => {
       if (edit) return api.updatePublication(id, body)
@@ -603,6 +813,7 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
     },
   })
   if (edit && existing.isLoading) return <Spinner />
+  if (edit && existing.isError) return <Alert error={existing.error} />
   if (
     edit &&
     existing.data &&
@@ -629,13 +840,18 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
     const form = new FormData(event.currentTarget)
     const value = (name: string) => String(form.get(name) ?? '').trim()
     const nullable = (name: string) => value(name) || null
-    const location =
-      value('latitude') && value('longitude')
-        ? {
-            latitude: Number(value('latitude')),
-            longitude: Number(value('longitude')),
-          }
-        : null
+    if (
+      edit &&
+      item?.type === 'ADOPTION' &&
+      publicationType !== 'ADOPTION' &&
+      locationIntent === 'unchanged'
+    ) {
+      setLocationError(
+        'Selecciona una ubicación exacta nueva o confirma Quitar ubicación antes de cambiar desde adopción.',
+      )
+      return
+    }
+    setLocationError(undefined)
     const animal = {
       name: nullable('animalName'),
       species: value('species'),
@@ -650,18 +866,23 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
     }
     const body = edit
       ? {
+          type: publicationType,
           title: value('title'),
           description: nullable('description'),
           eventDate: new Date(value('eventDate')).toISOString(),
-          location,
+          ...(locationIntent === 'set'
+            ? { location: selectedLocation }
+            : locationIntent === 'remove'
+              ? { location: null }
+              : {}),
           animal,
         }
       : {
-          type: value('type'),
+          type: publicationType,
           title: value('title'),
           description: nullable('description'),
           eventDate: new Date(value('eventDate')).toISOString(),
-          location,
+          ...(selectedLocation ? { location: selectedLocation } : {}),
           animal,
         }
     mutation.mutate(body)
@@ -679,15 +900,26 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
       <form onSubmit={submit}>
         <fieldset>
           <legend>Publicación</legend>
-          {!edit && (
-            <Field label="Tipo">
-              <select name="type" required defaultValue="LOST">
-                <option value="LOST">Perdido</option>
-                <option value="FOUND">Encontrado</option>
-                <option value="ADOPTION">Adopción</option>
-              </select>
-            </Field>
-          )}
+          <Field label="Tipo">
+            <select
+              name="type"
+              required
+              value={publicationType}
+              onChange={(event) => {
+                const next = event.target.value as PublicationType
+                setPublicationType(next)
+                setLocationError(undefined)
+                if (item?.type === 'ADOPTION' && next !== 'ADOPTION') {
+                  locationForm.reset({ location: null })
+                  setLocationIntent('unchanged')
+                }
+              }}
+            >
+              <option value="LOST">Perdido</option>
+              <option value="FOUND">Encontrado</option>
+              <option value="ADOPTION">Adopción</option>
+            </select>
+          </Field>
           <Field label="Título">
             <input
               name="title"
@@ -712,33 +944,40 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
               defaultValue={item ? item.eventDate.slice(0, 16) : ''}
             />
           </Field>
-          <div className="two">
-            <Field label="Latitud">
-              <input
-                name="latitude"
-                type="number"
-                step="any"
-                min="-90"
-                max="90"
-                defaultValue={item?.location?.latitude}
-              />
-            </Field>
-            <Field label="Longitud">
-              <input
-                name="longitude"
-                type="number"
-                step="any"
-                min="-180"
-                max="180"
-                defaultValue={item?.location?.longitude ?? undefined}
-              />
-            </Field>
-          </div>
-          <small>
-            La selección visual mediante mapa se añadirá próximamente. Las
-            coordenadas actuales son provisionales.
-          </small>
         </fieldset>
+        {item?.type !== 'ADOPTION' && publicationType === 'ADOPTION' && (
+          <p className="privacy-transition">
+            Al guardar, esta ubicación pasará a tratarse como zona de referencia
+            y el backend dejará de conservarla como punto exacto.
+          </p>
+        )}
+        <LocationPicker
+          mode={
+            publicationType === 'ADOPTION' ? 'reference-zone' : 'exact-owner'
+          }
+          value={selectedLocation}
+          publicZone={edit ? item?.publicLocation : null}
+          privacyText={
+            publicationType === 'LOST'
+              ? 'La ubicación exacta se guarda de forma privada. Los demás usuarios verán una zona aproximada de 1 km.'
+              : publicationType === 'FOUND'
+                ? 'La ubicación exacta se guarda de forma privada. Los demás usuarios verán una zona aproximada de 1,5 km.'
+                : 'No publiques tu domicilio exacto. Selecciona una zona de referencia. Se mostrará una zona aproximada de 5 km.'
+          }
+          onChange={(next) => {
+            locationForm.setValue('location', next, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+            setLocationIntent(next ? 'set' : 'remove')
+            setLocationError(undefined)
+          }}
+        />
+        {locationError && (
+          <p className="alert" role="alert">
+            {locationError}
+          </p>
+        )}
         <fieldset>
           <legend>Animal</legend>
           <Field label="Nombre">
@@ -849,7 +1088,9 @@ function PublicationForm({ edit = false }: { edit?: boolean }) {
             ? 'Guardando…'
             : createdPublicationId
               ? 'Reintentar imágenes'
-              : 'Guardar publicación'}
+              : edit
+                ? 'Guardar cambios'
+                : 'Guardar publicación'}
         </button>
       </form>
     </section>

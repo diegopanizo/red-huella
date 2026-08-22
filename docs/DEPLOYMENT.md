@@ -2,7 +2,25 @@
 
 **Estado: Pendiente.** No hay infraestructura ni entorno desplegado. Existe CI y un Compose opcional exclusivamente para un PostgreSQL 17 local reproducible; no es una arquitectura de producción. Las plataformas se elegirán cuando existan requisitos operativos medibles.
 
-La aplicación depende únicamente de `DATABASE_URL`: PostgreSQL puede proceder de una instalación Windows local, Docker o un servicio cloud sin cambios en el código. Compose publica `5434:5432` para no colisionar con las instalaciones locales en 5432 y 5433. Sus credenciales `red_huella_app`/`red_huella_dev_only` son development-only y nunca deben reutilizarse en producción.
+La aplicación depende únicamente de `DATABASE_URL`: PostgreSQL puede proceder de una instalación Windows local, Docker o un servicio cloud sin cambios en el código. Compose publica exclusivamente `127.0.0.1:5434:5432` para no colisionar con las instalaciones locales en 5432 y 5433. Sus credenciales `red_huella_app`/`red_huella_dev_only` son development-only y nunca deben reutilizarse en producción.
+
+## PostGIS para Milestone 8
+
+Compose usa `postgis/postgis:17-3.5`, variante Debian estable para PostgreSQL 17, y conserva `/var/lib/postgresql/data`. Cambiar desde `postgres:17-alpine` no borra ni recrea automáticamente el volumen. Tampoco garantiza que scripts de `/docker-entrypoint-initdb.d` ni la inicialización de PostGIS se ejecuten sobre un volumen existente: estos mecanismos solo actúan al inicializar un directorio vacío. Se debe hacer backup, levantar el contenedor de forma controlada, ejecutar el preflight y habilitar la extensión mediante la futura migración; nunca eliminar el volumen como automatismo.
+
+### PostgreSQL 17 local en Windows
+
+El objetivo local es exclusivamente PostgreSQL 17 en el puerto 5433. PostgreSQL 9.5 en 5432 es legado y no debe seleccionarse, actualizarse, detenerse ni recibir extensiones.
+
+1. Hacer backup de `red_huella` y `red_huella_test`.
+2. Identificar el servicio, directorio y StackBuilder asociados a PostgreSQL 17.
+3. Conectarse a 5433 y confirmar `SELECT version(), current_setting('port'), current_database();` antes de instalar.
+4. Abrir ese StackBuilder y seleccionar la instalación PostgreSQL 17, nunca la 9.5.
+5. Instalar la versión estable de PostGIS ofrecida como compatible con PostgreSQL 17, verificando el directorio de destino.
+6. Volver a ejecutar `npm run db:postgis:preflight` contra cada base prevista.
+7. No ejecutar todavía `CREATE EXTENSION`: tras confirmar disponibilidad se revisará el resultado y se preparará la migración `0003`.
+
+El preflight es solo lectura. Informa versión PostgreSQL, puerto, base, disponibilidad del paquete, instalación de la extensión y `postgis_full_version()` cuando ya exista. Usa `DATABASE_URL`, no cambia de base ni muestra credenciales.
 
 ## Topología futura
 

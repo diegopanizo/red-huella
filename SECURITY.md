@@ -104,7 +104,11 @@ El procesador autorrota, convierte el color a sRGB, elimina EXIF/GPS/ICC/XMP/IPT
 
 ## Privacidad de ubicación
 
-El modelo futuro almacenará, si es necesario y con acceso restringido, una ubicación interna exacta y generará por separado una ubicación pública aproximada. La aproximación será persistida o calculada de modo estable para impedir que consultas repetidas reconstruyan el punto exacto. No se publicará el domicilio por defecto. Véase [docs/PRIVACY.md](docs/PRIVACY.md).
+ADR-022 separa una ubicación interna exacta de una ubicación pública aproximada, aleatoria, persistida y versionada. Toda consulta, filtro, distancia, ordenación o mapa público usa exclusivamente `public_location`; los aggregates públicos ni siquiera seleccionan exacta/legacy y el DTO tampoco las expone. LOST y FOUND conservan exacta con zonas públicas de 1.000 y 1.500 m; ADOPTION no almacena domicilio exacto y usa una zona de 5.000 m. El modelo, migración, consultas, DTO y endpoint owner están implementados. Véase [docs/PRIVACY.md](docs/PRIVACY.md).
+
+La API geográfica implementada valida el trío de búsqueda y radios 500–100.000 m, parametriza SQL PostGIS y excluye ubicación pública nula. `/manage` exige sesión y owner, responde `private, no-store` y no expone versión ni formatos espaciales. El logger conserva solo `request.path`, nunca query string, y no se añadieron logs de coordenadas. Errores de validación y persistencia siguen sanitizados.
+
+La búsqueda cercana del navegador solicita geolocalización solo tras un click, conserva el centro en memoria y lo descarta al desactivar la búsqueda. No usa Web Storage ni añade coordenadas a analytics o logs. `PublicLocationMap` acepta exclusivamente el DTO público aproximado.
 
 ## Logs y errores
 

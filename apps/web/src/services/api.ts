@@ -2,6 +2,7 @@ import type {
   Publication,
   PublicationImage,
   PublicationList,
+  ManagePublication,
   User,
 } from '../types'
 
@@ -78,6 +79,10 @@ export const api = {
   mine: () => requestJson<PublicationList>('/publications/mine?pageSize=100'),
   publication: (id: string) =>
     requestJson<{ publication: Publication }>(`/publications/${id}`),
+  managePublication: (id: string) =>
+    requestJson<{ publication: ManagePublication }>(
+      `/publications/${id}/manage`,
+    ),
   createPublication: (body: unknown) =>
     requestJson<{ publication: Publication }>('/publications', {
       method: 'POST',

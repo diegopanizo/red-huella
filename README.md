@@ -20,17 +20,17 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 7, Bloque 4 (experiencia frontend de imágenes).**
+**En desarrollo — Milestone 8 completado (geolocalización y PostGIS).**
 
-Actualmente existe una plantilla frontend React/Vite y una API Express con health de PostgreSQL, errores sanitizados, request IDs, logging estructurado y cierre gracioso. El schema Drizzle implementa `users`, `animals`, `publications` y `publication_images`, con migration, seed y repositories base. La conexión real sigue pendiente de credenciales locales.
+La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía y mapas aproximados. La API Express usa PostgreSQL 17 + PostGIS, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
 
 ## Stack tecnológico
 
 | Área            | Estado           | Tecnología                                                            |
 | --------------- | ---------------- | --------------------------------------------------------------------- |
-| Frontend        | Inicializado     | React, Vite, TypeScript, ESLint                                       |
+| Frontend        | Funcional        | React 19, Vite, TypeScript, Leaflet y React-Leaflet                   |
 | Backend         | Base técnica     | Node.js, Express, TypeScript, Helmet, CORS y Zod                      |
-| Base de datos   | Modelo inicial   | PostgreSQL 17, `pg`, Drizzle, migration y seed                        |
+| Base de datos   | Geoespacial      | PostgreSQL 17, PostGIS 3.6, `pg`, Drizzle, migrations y seed          |
 | Matching visual | Futuro           | pgvector y proveedor desacoplado de embeddings                        |
 | Testing         | Base configurada | Vitest, React Testing Library y Supertest; Playwright queda pendiente |
 | Infraestructura | CI inicial       | GitHub Actions; plataforma de despliegue pendiente                    |
@@ -39,6 +39,7 @@ Actualmente existe una plantilla frontend React/Vite y una API Express con healt
 
 - Node.js 24 LTS (`>=24 <25`; véase `.nvmrc`).
 - npm 11 (`>=11 <12`).
+- PostgreSQL 17 con la extensión PostGIS disponible y activa.
 
 ## Arquitectura
 
@@ -96,7 +97,7 @@ La aplicación solo depende de `DATABASE_URL`; no detecta ni requiere Docker.
 
 ### Opción A — PostgreSQL local
 
-Se recomienda PostgreSQL 17. Crea bases separadas de desarrollo y test con usuarios sin privilegios de superusuario. Ejemplo orientativo ejecutado por una cuenta administradora:
+Se requiere PostgreSQL 17 con PostGIS. La migración geoespacial `0003` está implementada y aplicada en el entorno validado. El procedimiento Windows específico y el preflight de solo lectura están en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Crea bases separadas de desarrollo y test con usuarios sin privilegios de superusuario. Ejemplo orientativo ejecutado por una cuenta administradora:
 
 ```sql
 CREATE ROLE red_huella_app LOGIN PASSWORD 'contraseña-local-segura';
@@ -115,7 +116,13 @@ Si Docker está instalado:
 docker compose up -d
 ```
 
-`compose.yml` levanta únicamente PostgreSQL 17 en `localhost:5434` (el contenedor conserva `5432`), con volumen persistente, healthcheck y credenciales exclusivamente de desarrollo. Docker Compose es un entorno local reproducible opcional; no representa la estrategia definitiva de producción. La aplicación sigue conociendo únicamente `DATABASE_URL`.
+`compose.yml` levanta `postgis/postgis:17-3.5` exclusivamente en `127.0.0.1:5434` (el contenedor conserva `5432`), con volumen persistente, healthcheck y credenciales exclusivamente de desarrollo. El cambio de imagen no reinicializa un volumen existente ni debe provocar su borrado. Docker Compose es un entorno local reproducible opcional; no representa la estrategia definitiva de producción. La aplicación sigue conociendo únicamente `DATABASE_URL`.
+
+Diagnóstico de solo lectura contra la URL configurada:
+
+```bash
+npm run db:postgis:preflight
+```
 
 ## Migrations y seed
 

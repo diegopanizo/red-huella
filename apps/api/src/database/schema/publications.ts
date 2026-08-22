@@ -3,7 +3,9 @@ import {
   check,
   doublePrecision,
   index,
+  integer,
   pgTable,
+  smallint,
   text,
   timestamp,
   uuid,
@@ -13,6 +15,7 @@ import {
 import { animals } from './animals.js'
 import { publicationStatusEnum, publicationTypeEnum } from './enums.js'
 import { users } from './users.js'
+import { geographyPoint } from './geography-point.js'
 
 export const publications = pgTable(
   'publications',
@@ -40,6 +43,10 @@ export const publications = pgTable(
     }).notNull(),
     latitude: doublePrecision('latitude'),
     longitude: doublePrecision('longitude'),
+    exactLocation: geographyPoint('exact_location'),
+    publicLocation: geographyPoint('public_location'),
+    publicLocationRadiusMeters: integer('public_location_radius_meters'),
+    locationPrivacyVersion: smallint('location_privacy_version'),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' })
       .defaultNow()
       .notNull(),
@@ -55,6 +62,10 @@ export const publications = pgTable(
     index('publications_status_idx').on(table.status),
     index('publications_event_date_idx').on(table.eventDate),
     index('publications_created_at_idx').on(table.createdAt),
+    index('publications_public_location_gist_idx').using(
+      'gist',
+      table.publicLocation,
+    ),
     check(
       'publications_title_not_blank',
       sql`length(btrim(${table.title})) > 0`,
@@ -70,6 +81,18 @@ export const publications = pgTable(
     check(
       'publications_coordinates_pair',
       sql`(${table.latitude} is null) = (${table.longitude} is null)`,
+    ),
+    check(
+      'publications_public_location_complete',
+      sql`(${table.publicLocation} is null and ${table.publicLocationRadiusMeters} is null and ${table.locationPrivacyVersion} is null) or (${table.publicLocation} is not null and ${table.publicLocationRadiusMeters} is not null and ${table.locationPrivacyVersion} is not null)`,
+    ),
+    check(
+      'publications_public_location_radius_valid',
+      sql`${table.publicLocationRadiusMeters} is null or (${table.publicLocationRadiusMeters} > 0 and ${table.publicLocationRadiusMeters} <= 10000)`,
+    ),
+    check(
+      'publications_location_privacy_version_positive',
+      sql`${table.locationPrivacyVersion} is null or ${table.locationPrivacyVersion} > 0`,
     ),
   ],
 )

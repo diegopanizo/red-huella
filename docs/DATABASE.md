@@ -114,7 +114,13 @@ Un animal puede aparecer en varias publicaciones a lo largo del tiempo. `event_d
 
 ### Ubicación
 
-`latitude` y `longitude` son coordenadas exactas internas temporales, nunca una respuesta pública automática. Deben existir juntas y respetar `[-90, 90]` y `[-180, 180]`. En el milestone geoespacial se incorporará PostGIS y una representación pública aproximada separada; la migración deberá conservar la distinción y minimizar precisión almacenada.
+`latitude` y `longitude` son columnas legacy temporales. El backfill aplicado trasladó su información al modelo exacto/público y limpió las filas migradas; ningún SELECT, DTO, filtro, distancia, orden o mapa público las usa. Se conservan por ahora para compatibilidad estructural y podrán eliminarse mediante una migración futura cuando todos los entornos hayan confirmado backfill y no se necesite rollback compatible.
+
+`0003_unique_omega_flight.sql` añade `exact_location geography(Point,4326)`, `public_location geography(Point,4326)`, `public_location_radius_meters` y `location_privacy_version`. LOST conserva exacta y radio público de 1.000 m; FOUND, exacta y 1.500 m; ADOPTION mantiene exacta `NULL` y una zona de 5.000 m. Un GiST sobre `public_location` soporta `ST_DWithin` en metros. La migración está aplicada y validada en PostgreSQL 17/PostGIS 3.6.2 local y test.
+
+El Bloque 3 usa ese GiST mediante `ST_DWithin` y calcula `ST_Distance` en metros. Filtro y distancia públicos referencian exclusivamente `public_location`; `exact_location` no aparece en el SELECT público. Los mismos predicados se reutilizan para filas y count, combinados con tipo, especie, estado, ownership y archivado.
+
+Las columnas legacy se convierten mediante un backfill explícito e idempotente: LOST/FOUND trasladan el punto a exacta y generan una zona aleatoria; ADOPTION usa el legacy solo como referencia y deja exacta `NULL`; filas sin coordenadas permanecen vacías. Tras escribir el modelo completo se limpian `latitude`/`longitude`. Su eliminación física queda para otra migración. Nunca se copia la exacta directamente como pública.
 
 ### Imágenes
 
@@ -157,6 +163,15 @@ npm run db:migrate
 
 Se revisa el SQL generado y no se usa `db push` como flujo principal.
 
+Milestone 8 crea `0003_unique_omega_flight.sql`. Incluye la extensión PostGIS, cuatro columnas nullable, completitud conjunta de metadata pública, radio `1..10000`, versión positiva y GiST público. Antes de aplicarlo se verifica PostgreSQL 17/puerto 5433/base prevista y se usa una identidad autorizada para crear la extensión.
+
+Tras aplicar la migración, el backfill se inspecciona y ejecuta separadamente:
+
+```bash
+npm run db:location:backfill -- --dry-run
+npm run db:location:backfill -- --apply
+```
+
 ## Seed
 
 `npm run db:seed` inserta mediante `ON CONFLICT DO NOTHING` dos usuarios `USER` sin contraseña, tres animales y tres publicaciones. No crea imágenes ficticias ni incluye binarios demo. Es explícito, repetible y está bloqueado si `NODE_ENV=production`.
@@ -167,6 +182,6 @@ La aplicación consume exclusivamente `DATABASE_URL`, ya apunte a Windows, Docke
 
 ## Evolución futura
 
-- PostGIS y ubicación pública aproximada: Milestone 8 tras el cambio de orden registrado en ADR-021.
+- Retirada de `latitude`/`longitude` legacy mediante una migración posterior y revisada, nunca modificando `0003`.
 - `favorites`, `reports`, `shelters` y `matches`: milestones posteriores.
 - pgvector y embeddings: Milestone 14, condicionado a evaluación técnica y de privacidad.

@@ -16,6 +16,8 @@
     "db:migrate": "npm run db:migrate --workspace @red-huella/api",
     "db:studio": "npm run db:studio --workspace @red-huella/api",
     "db:seed": "npm run db:seed --workspace @red-huella/api",
+    "db:postgis:preflight": "npm run db:postgis:preflight --workspace @red-huella/api",
+    "db:location:backfill": "npm run db:location:backfill --workspace @red-huella/api --",
     "test:db": "npm run test:db --workspace @red-huella/api",
     "lint": "eslint .",
     "format": "prettier --write .",

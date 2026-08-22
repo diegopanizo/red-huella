@@ -272,22 +272,78 @@ textarea {
   background: #eef0ef;
   color: #4c5953;
 }
-.card dl {
-  display: flex;
-  gap: 1.5rem;
-}
-.card dl div,
 .facts div {
   display: grid;
 }
-.card dt,
+.card-taxonomy {
+  margin: 0.65rem 0 0;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.card-secondary {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.card-location {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+.card-location span {
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  background: #e9f2ed;
+  color: var(--green-dark);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.nearby-search {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1rem 0 1.4rem;
+  padding: 1rem;
+  border: 1px solid #cadfd3;
+  border-radius: 0.9rem;
+  background: #f0f7f3;
+}
+.nearby-search > div,
+.nearby-search label {
+  display: grid;
+  gap: 0.35rem;
+}
+.nearby-search span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.public-location {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.5rem 0;
+}
+.public-location h2,
+.public-location p {
+  margin: 0;
+}
+.public-location p {
+  color: var(--muted);
+}
+.public-location-map {
+  width: 100%;
+  height: clamp(260px, 36vw, 360px);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  z-index: 0;
+}
 .facts dt {
   color: var(--muted);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-.card dd,
 .facts dd {
   margin: 0;
   font-weight: 700;
@@ -517,6 +573,64 @@ button.danger {
   display: grid;
   gap: 1rem;
 }
+.location-picker {
+  display: grid;
+  gap: 0.85rem;
+  margin: 1.5rem 0;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: #f5f8f6;
+}
+.location-picker h2,
+.location-picker p {
+  margin: 0;
+}
+.location-map-canvas {
+  width: 100%;
+  height: clamp(280px, 42vw, 430px);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  z-index: 0;
+}
+.location-help,
+.selected-coordinates,
+.location-zone-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.location-zone-note {
+  font-weight: 700;
+  color: var(--green);
+}
+.location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.manual-location {
+  padding: 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  background: #fff;
+}
+.manual-location summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.manual-location .two {
+  margin: 0.9rem 0;
+}
+.manual-location label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+.privacy-transition {
+  padding: 0.8rem;
+  border-left: 4px solid var(--gold);
+  background: #fff8dd;
+}
 .form-page legend {
   font-family: Georgia, serif;
   font-size: 1.6rem;
@@ -585,11 +699,12 @@ button.danger {
   .section-title {
     align-items: flex-start;
   }
+  .nearby-search {
+    align-items: stretch;
+    flex-direction: column;
+  }
   .section-title .button {
     white-space: nowrap;
-  }
-  .card dl {
-    justify-content: space-between;
   }
   .pagination {
     font-size: 0.88rem;

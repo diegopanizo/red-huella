@@ -11,6 +11,14 @@ import {
 const trimmed = (maximum: number) => z.string().trim().min(1).max(maximum)
 const optionalTrimmed = (maximum: number) =>
   trimmed(maximum).nullable().optional()
+const queryNumber = (minimum: number, maximum: number) =>
+  z.preprocess(
+    (value) =>
+      typeof value === 'string' && value.trim().length > 0
+        ? Number(value)
+        : value,
+    z.number().min(minimum).max(maximum),
+  )
 
 const locationSchema = z
   .object({
@@ -47,6 +55,7 @@ export const createPublicationSchema = z
 
 export const updatePublicationSchema = z
   .object({
+    type: z.enum(publicationTypeValues).optional(),
     title: trimmed(160).min(5).optional(),
     description: optionalTrimmed(5_000),
     eventDate: z.iso
@@ -83,6 +92,29 @@ export const listPublicationsSchema = z
     type: z.enum(publicationTypeValues).optional(),
     status: z.enum(publicationStatusValues).optional(),
     species: z.enum(speciesValues).optional(),
-    order: z.enum(['newest', 'oldest', 'eventDate']).default('newest'),
+    latitude: queryNumber(-90, 90).optional(),
+    longitude: queryNumber(-180, 180).optional(),
+    radiusMeters: queryNumber(500, 100_000).optional(),
+    order: z
+      .enum(['newest', 'oldest', 'eventDate', 'distance'])
+      .default('newest'),
   })
   .strict()
+  .superRefine((value, context) => {
+    const geographicCount = [
+      value.latitude,
+      value.longitude,
+      value.radiusMeters,
+    ].filter((item) => item !== undefined).length
+    if (geographicCount !== 0 && geographicCount !== 3)
+      context.addIssue({
+        code: 'custom',
+        message:
+          'latitude, longitude y radiusMeters deben indicarse conjuntamente',
+      })
+    if (value.order === 'distance' && geographicCount !== 3)
+      context.addIssue({
+        code: 'custom',
+        message: 'order=distance requiere un centro de búsqueda y radio',
+      })
+  })

@@ -13,6 +13,37 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { AuthProvider } from './features/auth/AuthProvider'
 
+vi.mock('./features/locations/LocationMap', () => ({
+  LocationMap: ({
+    onChange,
+  }: {
+    onChange: (value: { latitude: number; longitude: number }) => void
+  }) => (
+    <button
+      type="button"
+      onClick={() => onChange({ latitude: 40.4168, longitude: -3.7038 })}
+    >
+      Seleccionar punto del mapa
+    </button>
+  ),
+}))
+vi.mock('./features/locations/PublicLocationMap', () => ({
+  PublicLocationMap: ({
+    publicLocation,
+    type,
+  }: {
+    publicLocation: { radiusMeters: number }
+    type: string
+  }) => (
+    <div
+      data-testid="public-location-map"
+      data-radius={publicLocation.radiusMeters}
+    >
+      Mapa público {type}
+    </div>
+  ),
+}))
+
 const publication = {
   id: '11111111-1111-4111-8111-111111111111',
   type: 'LOST',
@@ -23,7 +54,7 @@ const publication = {
   createdAt: '2026-08-20T10:00:00Z',
   updatedAt: '2026-08-20T10:00:00Z',
   resolvedAt: null,
-  location: null,
+  publicLocation: null,
   animal: {
     id: '22222222-2222-4222-8222-222222222222',
     name: 'Rocky',
@@ -70,6 +101,10 @@ function renderApp(path = '/') {
 beforeEach(() => {
   URL.createObjectURL = vi.fn((file: File) => `blob:${file.name}`)
   URL.revokeObjectURL = vi.fn()
+  Object.defineProperty(navigator, 'geolocation', {
+    configurable: true,
+    value: undefined,
+  })
 })
 
 afterEach(() => {
@@ -105,10 +140,222 @@ describe('frontend funcional', () => {
       `/publications/${publication.id}`,
     )
     expect(screen.getByLabelText('Imagen no disponible')).toBeInTheDocument()
+    expect(screen.getByText('Perdido')).toBeInTheDocument()
+    expect(screen.getByText('Perdido · Perro')).toBeInTheDocument()
+    expect(screen.queryByText(/Border Collie/)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Zona aproximada protegida/),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/Aprox\./)).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Tipo'), {
       target: { value: 'LOST' },
     })
     await waitFor(() => expect(window.location.search).toContain('type=LOST'))
+  })
+
+  it('resume raza, sexo y geografía pública sin mostrar coordenadas', async () => {
+    const located = {
+      ...publication,
+      publicLocation: {
+        latitude: 40.4168,
+        longitude: -3.7038,
+        radiusMeters: 1_000,
+      },
+      distanceMeters: 2_300,
+      animal: { ...publication.animal, breed: 'Border Collie' },
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/auth/me')
+          ? json({}, 401)
+          : json({
+              items: [located],
+              pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+            }),
+      ),
+    )
+    renderApp()
+    expect(
+      await screen.findByText('Perdido · Perro · Border Collie'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Macho/)).toBeInTheDocument()
+    expect(screen.getByText('Zona aproximada protegida')).toBeInTheDocument()
+    expect(screen.getByText('Cerca de ti · Aprox. 2,3 km')).toBeInTheDocument()
+    expect(screen.queryByText(/40[.,]4168/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/-3[.,]7038/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/1\.000 m/)).not.toBeInTheDocument()
+  })
+
+  it('busca cerca solo tras click, conserva filtros, cambia radio y permite quitarla', async () => {
+    const getCurrentPosition = vi.fn()
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    })
+    const requestedUrls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/auth/me')) return json({}, 401)
+        requestedUrls.push(url)
+        return json({
+          items: [publication],
+          pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+        })
+      }),
+    )
+    renderApp()
+    await screen.findByRole('link', { name: 'Rocky' })
+    expect(getCurrentPosition).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar cerca de mí' }))
+    expect(getCurrentPosition).toHaveBeenCalledOnce()
+    const [success, , options] = getCurrentPosition.mock.calls[0]!
+    expect(options).toMatchObject({
+      enableHighAccuracy: false,
+      timeout: 10_000,
+    })
+    success({ coords: { latitude: 40.4, longitude: -3.7 } })
+    await waitFor(() =>
+      expect(
+        requestedUrls.some(
+          (url) =>
+            url.includes('latitude=40.4') &&
+            url.includes('longitude=-3.7') &&
+            url.includes('radiusMeters=25000') &&
+            url.includes('order=distance'),
+        ),
+      ).toBe(true),
+    )
+    expect(screen.getByText('Ordenadas por cercanía')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Especie'), {
+      target: { value: 'DOG' },
+    })
+    await waitFor(() =>
+      expect(
+        requestedUrls.some(
+          (url) => url.includes('species=DOG') && url.includes('latitude=40.4'),
+        ),
+      ).toBe(true),
+    )
+    fireEvent.change(screen.getByLabelText('Radio de búsqueda'), {
+      target: { value: '5000' },
+    })
+    await waitFor(() =>
+      expect(
+        requestedUrls.some(
+          (url) =>
+            url.includes('radiusMeters=5000') && url.includes('species=DOG'),
+        ),
+      ).toBe(true),
+    )
+    expect(getCurrentPosition).toHaveBeenCalledOnce()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Quitar búsqueda por cercanía' }),
+    )
+    await waitFor(() => {
+      const last = requestedUrls.at(-1) ?? ''
+      expect(last).toContain('species=DOG')
+      expect(last).not.toContain('latitude=')
+      expect(last).not.toContain('order=distance')
+    })
+  })
+
+  it.each([
+    [1, 'Permiso de ubicación denegado'],
+    [2, 'No se pudo obtener tu ubicación'],
+    [3, 'La geolocalización tardó demasiado'],
+  ])(
+    'mantiene el listado ante el error de geolocalización %s',
+    async (code, message) => {
+      const getCurrentPosition = vi.fn()
+      Object.defineProperty(navigator, 'geolocation', {
+        configurable: true,
+        value: { getCurrentPosition },
+      })
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL) =>
+          String(input).includes('/auth/me')
+            ? json({}, 401)
+            : json({
+                items: [publication],
+                pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+              }),
+        ),
+      )
+      renderApp()
+      await screen.findByRole('link', { name: 'Rocky' })
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Buscar cerca de mí' }),
+      )
+      getCurrentPosition.mock.calls[0]![1]({ code })
+      expect(await screen.findByRole('alert')).toHaveTextContent(message)
+      expect(screen.getByRole('link', { name: 'Rocky' })).toBeInTheDocument()
+    },
+  )
+
+  it('deshabilita cercanía sin API de geolocalización', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/auth/me')
+          ? json({}, 401)
+          : json({
+              items: [publication],
+              pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+            }),
+      ),
+    )
+    renderApp()
+    await screen.findByRole('link', { name: 'Rocky' })
+    expect(
+      screen.getByRole('button', { name: 'Búsqueda cercana no disponible' }),
+    ).toBeDisabled()
+  })
+
+  it('muestra mapa público, raza y sexo en detalle sin coordenadas exactas', async () => {
+    const located = {
+      ...publication,
+      publicLocation: {
+        latitude: 40.4168,
+        longitude: -3.7038,
+        radiusMeters: 1_000,
+      },
+      animal: { ...publication.animal, breed: 'Border Collie' },
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/auth/me')
+          ? json({}, 401)
+          : json({ publication: located }),
+      ),
+    )
+    renderApp(`/publications/${publication.id}`)
+    expect(await screen.findByTestId('public-location-map')).toHaveAttribute(
+      'data-radius',
+      '1000',
+    )
+    expect(screen.getByText('Border Collie')).toBeInTheDocument()
+    expect(screen.getByText('Macho')).toBeInTheDocument()
+    expect(screen.queryByText(/40[.,]4168/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/exactLocation/)).not.toBeInTheDocument()
+  })
+
+  it('omite el mapa público en detalle sin publicLocation', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) =>
+        String(input).includes('/auth/me')
+          ? json({}, 401)
+          : json({ publication }),
+      ),
+    )
+    renderApp(`/publications/${publication.id}`)
+    await screen.findByRole('heading', { name: publication.title })
+    expect(screen.queryByTestId('public-location-map')).not.toBeInTheDocument()
   })
 
   it('muestra estado vacío', async () => {
@@ -363,5 +610,200 @@ describe('frontend funcional', () => {
     expect(
       screen.queryByRole('button', { name: 'Hacer principal' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('crea con la ubicación seleccionada y cambia los textos de privacidad', async () => {
+    const fetchMock = vi.fn(
+      (input: RequestInfo | URL, options?: RequestInit) => {
+        const url = String(input)
+        if (url.includes('/auth/me'))
+          return json({
+            user: { ...publication.author, email: 'diego@example.test' },
+          })
+        if (url.endsWith('/publications') && options?.method === 'POST')
+          return json({ publication }, 201)
+        return json({
+          items: [],
+          pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+        })
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderApp('/publications/new')
+    await screen.findByRole('heading', { name: 'Publica una huella' })
+    expect(screen.getByText(/zona aproximada de 1 km/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Tipo'), {
+      target: { value: 'FOUND' },
+    })
+    expect(screen.getByText(/zona aproximada de 1,5 km/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Tipo'), {
+      target: { value: 'ADOPTION' },
+    })
+    expect(
+      screen.getByText(/No publiques tu domicilio exacto/),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Seleccionar punto del mapa' }),
+    )
+    fireEvent.change(screen.getByLabelText('Título'), {
+      target: { value: 'Adopción responsable' },
+    })
+    fireEvent.change(screen.getByLabelText('Fecha y hora'), {
+      target: { value: '2026-08-20T10:00' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar publicación' }))
+    await waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(([url, options]) => {
+          if (
+            !String(url).endsWith('/publications') ||
+            (options as RequestInit | undefined)?.method !== 'POST'
+          )
+            return false
+          const body = JSON.parse(String((options as RequestInit).body))
+          return body.location.latitude === 40.4168 && body.type === 'ADOPTION'
+        }),
+      ).toBe(true),
+    )
+  })
+
+  it.each(['LOST', 'FOUND'] as const)(
+    'edita %s desde manage y omite location si no cambia',
+    async (type) => {
+      const managed = {
+        ...publication,
+        type,
+        exactLocation: { latitude: 41.1, longitude: -4.2 },
+        publicLocation: {
+          latitude: 41.11,
+          longitude: -4.19,
+          radiusMeters: 1_000,
+        },
+      }
+      let patchBody: Record<string, unknown> | undefined
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+          const url = String(input)
+          if (url.includes('/auth/me'))
+            return json({
+              user: { ...publication.author, email: 'diego@example.test' },
+            })
+          if (url.endsWith(`/publications/${publication.id}/manage`))
+            return json({ publication: managed })
+          if (
+            url.endsWith(`/publications/${publication.id}`) &&
+            options?.method === 'PATCH'
+          ) {
+            patchBody = JSON.parse(String(options.body))
+            return json({ publication })
+          }
+          return json({
+            items: [],
+            pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+          })
+        }),
+      )
+      renderApp(`/publications/${publication.id}/edit`)
+      expect(
+        await screen.findByText(/41.100000, -4.200000/),
+      ).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+      await waitFor(() => expect(patchBody).toBeDefined())
+      expect(patchBody).not.toHaveProperty('location')
+    },
+  )
+
+  it.each([
+    ['Seleccionar punto del mapa', { latitude: 40.4168, longitude: -3.7038 }],
+    ['Quitar ubicación', null],
+  ] as const)(
+    'envía el cambio de ubicación al editar: %s',
+    async (action, expectedLocation) => {
+      const managed = {
+        ...publication,
+        exactLocation: { latitude: 41.1, longitude: -4.2 },
+        publicLocation: {
+          latitude: 41.11,
+          longitude: -4.19,
+          radiusMeters: 1_000,
+        },
+      }
+      let patchBody: Record<string, unknown> | undefined
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((input: RequestInfo | URL, options?: RequestInit) => {
+          const url = String(input)
+          if (url.includes('/auth/me'))
+            return json({
+              user: { ...publication.author, email: 'diego@example.test' },
+            })
+          if (url.endsWith(`/publications/${publication.id}/manage`))
+            return json({ publication: managed })
+          if (
+            url.endsWith(`/publications/${publication.id}`) &&
+            options?.method === 'PATCH'
+          ) {
+            patchBody = JSON.parse(String(options.body))
+            return json({ publication })
+          }
+          return json({
+            items: [],
+            pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+          })
+        }),
+      )
+      renderApp(`/publications/${publication.id}/edit`)
+      await screen.findByText(/41.100000, -4.200000/)
+      fireEvent.click(screen.getByRole('button', { name: action }))
+      fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+      await waitFor(() => expect(patchBody).toBeDefined())
+      expect(patchBody?.location).toEqual(expectedLocation)
+    },
+  )
+
+  it('ADOPTION no reutiliza publicLocation y exige una decisión al pasar a LOST', async () => {
+    const managed = {
+      ...publication,
+      type: 'ADOPTION',
+      exactLocation: null,
+      publicLocation: { latitude: 39.5, longitude: -0.4, radiusMeters: 5_000 },
+    }
+    const fetchMock = vi.fn(
+      (input: RequestInfo | URL, options?: RequestInit) => {
+        void options
+        const url = String(input)
+        if (url.includes('/auth/me'))
+          return json({
+            user: { ...publication.author, email: 'diego@example.test' },
+          })
+        if (url.endsWith(`/publications/${publication.id}/manage`))
+          return json({ publication: managed })
+        return json({
+          items: [],
+          pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+        })
+      },
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderApp(`/publications/${publication.id}/edit`)
+    await screen.findByText('Zona aproximada visible públicamente.')
+    expect(
+      screen.queryByText(/Coordenadas seleccionadas/),
+    ).not.toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Tipo'), {
+      target: { value: 'LOST' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'ubicación exacta nueva',
+    )
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, options]) =>
+          String(url).endsWith(`/publications/${publication.id}`) &&
+          (options as RequestInit | undefined)?.method === 'PATCH',
+      ),
+    ).toBe(false)
   })
 })

@@ -34,7 +34,7 @@ Tests actuales:
 - `apps/api/src/repositories/normalize-email.test.ts`: normalización determinista de email.
 - `apps/api/src/database/test-database.test.ts`: safeguards para impedir limpieza fuera de una base `_test` separada.
 
-La cobertura de negocio sigue pendiente porque todavía no existen funcionalidades de negocio.
+La cobertura incluye reglas de autenticación, publicaciones, imágenes y geolocalización; los recorridos E2E completos siguen planificados.
 
 ## Ejecución
 
@@ -45,6 +45,38 @@ La cobertura de negocio sigue pendiente porque todavía no existen funcionalidad
 Los unitarios inyectan un `DatabaseProbe` controlado y Supertest usa la aplicación sin puerto. La suite normal no necesita PostgreSQL.
 
 La suite `npm run test:db` usa PostgreSQL real, aplica migrations y valida tablas, inserts, unicidad de email, animales, publicaciones, FKs, coordenadas, imágenes y `findById`. No usa SQLite ni mocks como sustituto. Requiere `NODE_ENV=test`, `DATABASE_TEST_URL` distinta de desarrollo y nombre terminado en `_test`; limpia filas con `DELETE` en orden seguro, nunca `DROP`/`TRUNCATE`.
+
+Milestone 8 añade unitarios de radios, CSPRNG inyectable, desplazamiento esférico en ecuador/latitudes altas/antimeridiano, retención por tipo, estabilidad y regeneración. Los tests de mapping prueban que el DTO público no expone exacta ni legacy y no aplica fallback. La suite DB PostGIS ejecuta extensión, geography/SRID, constraints, GiST, roundtrip, distancia, ADOPTION y backfill/idempotencia sobre `0003` aplicada en la base de test aislada.
+
+El Bloque 4 prueba `LocationPicker` sin inspeccionar internals de Leaflet: selección/eliminación, entrada manual completa e incompleta, geolocalización voluntaria, permiso denegado y ausencia de API. Las pruebas de aplicación verifican textos por tipo, create con ubicación, carga owner desde `/manage`, omisión de `location` sin cambios y la protección ADOPTION → LOST/FOUND. React-Leaflet se sustituye por un doble en JSDOM; la interacción real del mapa se valida manualmente.
+
+Checklist manual del Bloque 4:
+
+1. Crear LOST: seleccionar en mapa, guardar y comprobar que el detalle funciona.
+2. Editar LOST: confirmar el marcador exacto owner, moverlo y guardar.
+3. Crear FOUND y comprobar el texto de zona aproximada de 1,5 km.
+4. Crear ADOPTION y comprobar el aviso de no publicar domicilio exacto.
+5. Cambiar ADOPTION a LOST: verificar que exige un punto nuevo o la decisión explícita de quitar ubicación.
+6. Pulsar **Usar mi ubicación**: comprobar que el permiso aparece solo tras el click.
+7. Denegar geolocalización: comprobar el mensaje y que mapa/entrada manual siguen operativos.
+8. Desactivar red o bloquear tiles: comprobar el aviso y guardar usando coordenadas manuales.
+
+El Bloque 5 prueba el componente público por contrato: contexto LOST/FOUND/ADOPTION, radio del círculo, atribución OSM y ausencia de coordenadas textuales. Las pruebas de `Home` verifican que no se solicita geolocalización al cargar, que el click genera `latitude`, `longitude`, radio 25 km y `order=distance`, que radio/filtros provocan nuevas consultas sin repetir permiso y que quitar cercanía vuelve a una query normal. También cubren permiso denegado, indisponibilidad, timeout y navegador sin API sin bloquear el listado.
+
+Checklist manual del Bloque 5:
+
+1. Abrir un detalle LOST con ubicación y comprobar el círculo aproximado.
+2. Verificar que el detalle no presenta coordenadas ni marcador exacto.
+3. En Explorar, pulsar **Buscar cerca de mí** y aceptar el permiso.
+4. Comprobar el mensaje de búsqueda activa, el orden por cercanía y las distancias aproximadas.
+5. Cambiar el radio de 25 km a 5 km y comprobar el refresco.
+6. Cambiar especie, tipo y estado comprobando que la cercanía permanece activa.
+7. Quitar la búsqueda cercana y verificar el regreso al listado normal.
+8. Denegar el permiso y confirmar que el listado normal sigue utilizable.
+9. Abrir un detalle ADOPTION y confirmar que se describe como zona de referencia, no como domicilio.
+10. Bloquear los tiles y confirmar que el resto del detalle permanece legible.
+
+El Bloque 3 cubre redondeo público, validación completa de query, create por tipo, campos protegidos, estabilidad/regeneración, retirada y transiciones de tipo. Supertest/PostGIS verifica `/manage`, auth/ownership/cache, radio y orden estable, filtros combinados, null/archived, distancia redondeada y un dataset con exacta/pública deliberadamente separadas. La suite DB comprueba fronteras `ST_DWithin`, distancia en metros y existencia de GiST sin imponer un plan frágil sobre pocas filas.
 
 ## Pirámide prevista
 

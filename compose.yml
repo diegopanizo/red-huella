@@ -1,12 +1,12 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgis/postgis:17-3.5
     environment:
       POSTGRES_DB: red_huella
       POSTGRES_USER: red_huella_app
       POSTGRES_PASSWORD: red_huella_dev_only
     ports:
-      - '5434:5432'
+      - '127.0.0.1:5434:5432'
     volumes:
       - red_huella_postgres_data:/var/lib/postgresql/data
       - ./database/docker-init:/docker-entrypoint-initdb.d:ro

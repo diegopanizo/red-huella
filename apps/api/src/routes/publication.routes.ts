@@ -25,6 +25,7 @@ import {
   CreatePublicationService,
   GetPublicationService,
   ListPublicationsService,
+  ManagePublicationService,
   UpdatePublicationService,
 } from '../services/publication.services.js'
 import {
@@ -61,6 +62,7 @@ export function createPublicationRouter(
     new CreatePublicationService(publications),
     new GetPublicationService(publications),
     new ListPublicationsService(publications),
+    new ManagePublicationService(publications),
     new UpdatePublicationService(publications),
     new ChangePublicationStatusService(publications),
   )
@@ -81,6 +83,7 @@ export function createPublicationRouter(
   const router = Router()
   router.get('/', controller.list)
   router.get('/mine', auth, controller.mine)
+  router.get('/:id/manage', auth, controller.manage)
   router.get('/:id', controller.get)
   router.post('/', requireTrustedOrigin, auth, controller.create)
   router.post(

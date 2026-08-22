@@ -14,6 +14,7 @@ import type {
   CreatePublicationService,
   GetPublicationService,
   ListPublicationsService,
+  ManagePublicationService,
   UpdatePublicationService,
 } from '../services/publication.services.js'
 
@@ -30,6 +31,7 @@ export class PublicationController {
     private readonly createPublication: CreatePublicationService,
     private readonly getPublication: GetPublicationService,
     private readonly listPublications: ListPublicationsService,
+    private readonly managePublication: ManagePublicationService,
     private readonly updatePublication: UpdatePublicationService,
     private readonly changeStatus: ChangePublicationStatusService,
   ) {}
@@ -78,6 +80,20 @@ export class PublicationController {
           request.auth.userId,
         ),
       )
+    } catch (error: unknown) {
+      next(error)
+    }
+  }
+  manage: RequestHandler = async (request, response, next) => {
+    try {
+      if (!request.auth) throw new UnauthenticatedError()
+      const { id } = parseOrThrow(publicationIdSchema.safeParse(request.params))
+      response.set('Cache-Control', 'private, no-store').json({
+        publication: await this.managePublication.execute(
+          id,
+          request.auth.userId,
+        ),
+      })
     } catch (error: unknown) {
       next(error)
     }

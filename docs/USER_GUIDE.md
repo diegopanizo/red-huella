@@ -14,7 +14,15 @@ Los listados muestran el thumbnail principal o un placeholder. El detalle permit
 
 **Estado: aplicación en desarrollo.**
 
-La interfaz permite identidad, publicaciones, filtros e imágenes. Todavía no incluye mapas, favoritos, PWA, administración ni matching visual.
+La interfaz permite identidad, publicaciones, filtros, imágenes y seleccionar ubicación mediante mapa al crear o editar. Todavía no incluye el mapa general de exploración, favoritos, PWA, administración ni matching visual.
+
+En crear o editar, pulsa el mapa, arrastra el marcador o abre **Introducir coordenadas manualmente**. **Usar mi ubicación** solicita permiso solo al pulsarlo; denegarlo no bloquea el formulario. **Quitar ubicación** expresa que se desea publicar sin ella. LOST/FOUND guardan el punto exacto de forma privada; ADOPTION interpreta la selección como zona y no debe usarse para introducir un domicilio.
+
+La edición carga el contrato privado owner. Al pasar ADOPTION a LOST/FOUND hay que elegir un punto exacto nuevo o confirmar explícitamente que se continuará sin ubicación. El centro público aproximado de ADOPTION nunca se reutiliza como exacto.
+
+En **Explorar**, **Buscar cerca de mí** solicita la ubicación solo al pulsarlo y usa inicialmente 25 km. Con la búsqueda activa se puede escoger 5, 10, 25, 50 o 100 km, mantener los filtros de tipo/especie/estado y ver resultados ordenados por cercanía. **Quitar búsqueda por cercanía** vuelve al listado normal y descarta el centro. Las distancias de las cards son aproximadas respecto de la zona pública.
+
+El detalle público muestra, cuando existe ubicación, un círculo aproximado sin marcador ni coordenadas. LOST habla de la zona donde se reportó la pérdida, FOUND de la zona donde fue encontrado y ADOPTION de una zona de referencia.
 
 ## Imágenes y privacidad
 

@@ -7,13 +7,20 @@
 | POST   | `/api/v1/publications`            | sesión + Origin | Crea animal y publicación atómicamente; `201` |
 | GET    | `/api/v1/publications`            | público         | Lista paginada y filtrada                     |
 | GET    | `/api/v1/publications/mine`       | sesión          | Lista todas las publicaciones propias         |
+| GET    | `/api/v1/publications/:id/manage` | owner           | Datos editables con ubicación exacta privada  |
 | GET    | `/api/v1/publications/:id`        | público         | Detalle no archivado                          |
 | PATCH  | `/api/v1/publications/:id`        | owner + Origin  | Edita publicación y animal atómicamente       |
 | PATCH  | `/api/v1/publications/:id/status` | owner + Origin  | Resuelve, adopta o archiva                    |
 
-Listado: `page=1`, `pageSize=20` (máximo 100), filtros `type`, `status`, `species` y orden `newest`, `oldest` o `eventDate`. Sin filtro de estado solo aparecen `ACTIVE`; `ARCHIVED` nunca aparece en el listado público. `/mine` incluye estados no públicos.
+Listado: `page=1`, `pageSize=20` (máximo 100), filtros `type`, `status`, `species` y orden `newest`, `oldest`, `eventDate` o `distance`. Sin filtro de estado solo aparecen `ACTIVE`; `ARCHIVED` nunca aparece en el listado público. `/mine` incluye estados no públicos.
 
-El DTO contiene `id`, tipo, título, descripción, estado, fechas, ubicación provisional, animal, imágenes existentes y autor `{id,name,role}`. Nunca contiene email, password, sesión o `userId`. LOST/FOUND no aceptan fecha futura. Errores propios: `PUBLICATION_NOT_FOUND`, `PUBLICATION_FORBIDDEN`, `PUBLICATION_INVALID_STATUS_TRANSITION` y `PUBLICATION_VALIDATION_ERROR`.
+La búsqueda geográfica amplía el mismo listado con `latitude`, `longitude` y `radiusMeters`, que deben aparecer conjuntamente. El radio permitido es 500–100.000 m y `order=distance` exige esos tres parámetros. PostGIS filtra y calcula distancias exclusivamente desde `public_location`; una fila sin ubicación pública queda fuera. `distanceMeters` solo aparece en una búsqueda geográfica y se redondea a 100 m por debajo de 10 km o a 1 km desde 10 km.
+
+El DTO público contiene `publicLocation {latitude,longitude,radiusMeters}` o `null`, nunca exacta ni legacy, además de publicación, animal, imágenes y autor `{id,name,role}`. `GET /:id/manage` exige sesión y ownership, responde `Cache-Control: private, no-store` y añade `exactLocation`; en ADOPTION siempre es `null`. No devuelve formatos PostGIS ni versión de privacidad. LOST/FOUND no aceptan fecha futura.
+
+El PATCH permite cambiar `type`. La política se reaplica al tipo final dentro de la actualización atómica. LOST/FOUND → ADOPTION elimina exacta; ADOPTION → LOST/FOUND requiere una nueva ubicación si se omite `location`, aunque `location: null` permite expresar deliberadamente una publicación sin ubicación.
+
+El cliente web tipa `publicLocation` como `{ latitude, longitude, radiusMeters }` y el resultado owner como el DTO público más `exactLocation: { latitude, longitude } | null`. En PATCH omite `location` si no cambió, envía el punto solo al modificarlo y envía `null` al quitarlo.
 
 ## Autenticación implementada
 
@@ -30,7 +37,7 @@ Todos los POST requieren `Origin` igual a `WEB_ORIGIN`. Registro y login estable
 
 ## Estado
 
-La base Express y los endpoints de autenticación, publicaciones e imágenes están implementados. Frontend de imágenes y las áreas futuras continúan **PLANNED**.
+La base Express y los endpoints de autenticación, publicaciones, imágenes y búsqueda geográfica están implementados. El frontend consume estos contratos para gestión, mapas aproximados y búsqueda cercana.
 
 El modelo y repositories de `users`, `animals` y `publications` son internos. No se han creado endpoints temporales ni se expone acceso directo a persistencia.
 
@@ -73,7 +80,7 @@ Formato de error implementado para fallos globales y rutas desconocidas:
 | ---------------------- | ----------- | ------------------------------------------------------------------ |
 | `/api/v1/auth`         | IMPLEMENTED | Registro, login, logout y usuario actual; recuperación planificada |
 | `/api/v1/users`        | PLANNED     | Perfil y derechos sobre datos personales                           |
-| `/api/v1/publications` | IMPLEMENTED | CRUD acotado, filtros, ownership y estados; geografía pendiente    |
+| `/api/v1/publications` | IMPLEMENTED | CRUD, filtros, ownership, estados y búsqueda geográfica pública    |
 | `/api/v1/animals`      | PLANNED     | Datos de animales asociados                                        |
 | `/api/v1/favorites`    | PLANNED     | Favoritos del usuario autenticado                                  |
 | `/api/v1/matches`      | PLANNED     | Posibles coincidencias y feedback                                  |
@@ -87,7 +94,7 @@ Salvo los endpoints de auth y publicaciones documentados como implementados, est
 
 - Recuperación de contraseña y verificación de email bajo auth.
 - `GET/PATCH /api/v1/users/me` y operación futura de eliminación.
-- Búsqueda geográfica y eliminación física de publicaciones, si se justifica en un milestone futuro.
+- Eliminación física de publicaciones, si se justifica en un milestone futuro.
 - La UI de imágenes y el adaptador de object storage S3/R2 siguen pendientes; el backend descrito debajo está implementado.
 
 ## Contrato implementado de imágenes

@@ -80,8 +80,6 @@ async function seed(): Promise<void> {
         type: 'LOST',
         title: 'Perra perdida en zona de prueba',
         eventDate: new Date('2026-01-10T12:00:00Z'),
-        latitude: 40.4168,
-        longitude: -3.7038,
       },
       {
         id: seedIds.publications[1],

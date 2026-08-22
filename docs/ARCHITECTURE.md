@@ -12,6 +12,26 @@
 
 Las actualizaciones compuestas siguen la misma transacción y actualizan `updated_at` desde aplicación. Para mutaciones: `request.auth.userId → comparación con publication.userId → operación autorizada`. Controllers no consultan DB ni deciden ownership.
 
+## Geolocalización — Milestone 8 completado
+
+ADR-022 usa `geography(Point,4326)` y separa `exact_location` de `public_location`. `0003_unique_omega_flight.sql` está aplicada y el backfill idempotente fue ejecutado en PostgreSQL 17/PostGIS 3.6.2. Un custom type localizado transforma WKT/EWKB dentro de persistencia; esos formatos no alcanzan dominio, services ni DTOs.
+
+El flujo de escritura es `DTO validado → LocationPrivacyService → Repository espacial → PostGIS`. El service puro usa una fuente CSPRNG inyectable, genera el centro público una vez y lo persiste. Create y PATCH escriben publicación/animal/ubicación atómicamente y reaplican la política al tipo final.
+
+Los aggregates de detalle/listado usan una selección allowlist que no lee `exact_location` ni la pareja legacy; proyectan esos campos internos como `NULL`. `findById` conserva la lectura completa exclusivamente para casos internos. Esta separación evita que una futura omisión del DTO sea la única barrera frente a la ubicación exacta.
+
+El listado construye una sola colección de filtros reutilizada en datos y count. Con centro geográfico añade `ST_DWithin(public_location, search_point, radius)` y calcula `ST_Distance` sobre los mismos geography; `order=distance` estabiliza con `created_at DESC, id DESC`. El endpoint owner `/publications/:id/manage` usa una selección interna separada, exige sesión/ownership y nunca altera el contrato público según cookie.
+
+El Bloque 4 añade `LocationPicker` como adaptador controlado y reusable sobre React-Leaflet. Su valor `Location | null` es la fuente de verdad compartida por mapa, marcador, geolocalización y fallback manual. El modo obligatorio `exact-owner | reference-zone` hace explícito el contexto de privacidad. La edición obtiene `exactLocation` solo desde `/manage`; `publicLocation` se pasa al mapa exclusivamente como círculo de referencia. Los assets del marcador se importan desde el paquete Leaflet para que Vite los incluya, sin CDN adicional.
+
+Se usan Leaflet 1.9.4 y React-Leaflet 5.0.0 por ser las versiones estables compatibles con React 19; `@types/leaflet` 1.9.22 aporta tipos para Leaflet 1.x. Los tiles OSM estándar son exclusivamente de desarrollo/demo, conservan su atribución visible y no constituyen infraestructura de producción.
+
+El Bloque 5 separa el mapa público en `PublicLocationMap`, cuyo contrato solo acepta `publicLocation`, tipo y altura opcional; no puede recibir `exactLocation`. Renderiza un círculo sin marcador y mantiene el detalle legible si fallan los tiles. `Home` conserva el centro del visitante exclusivamente en memoria, lo incorpora junto a radio, orden, filtros y página en la query key, y delega `ST_DWithin`/ordenación al backend. Al retirar la cercanía elimina el estado y las entradas geográficas de la caché de React Query.
+
+El bundle web supera actualmente el umbral informativo de 500 kB minificado. Leaflet/React-Leaflet contribuyen de forma significativa porque se cargan en el entry principal. Es deuda técnica no bloqueante: una mejora futura puede cargar los componentes cartográficos mediante `React.lazy`/dynamic import y separar el chunk, previa medición y pruebas de loading/error.
+
+`LocationBackfillService` recorre legacy por cursor UUID, no registra coordenadas y solo escribe cuando se invoca en modo `--apply`; el comando sin flag es dry-run. Tras convertir una fila limpia latitud/longitud legacy, haciendo la operación idempotente.
+
 ## Imágenes — Milestone 7, Bloques 1 a 4
 
 `ImageProcessor` y `ImageStorage` son puertos de aplicación. `SharpImageProcessor` implementa el primero y produce dos variantes WebP normalizadas; el segundo escribe, lee y elimina objetos sin conocer Express, PostgreSQL ni URLs públicas. `LocalImageStorage` es el adaptador de desarrollo y usa un root privado configurable.
@@ -61,7 +81,7 @@ flowchart TD
     P -. extensión avanzada .-> V[pgvector]
 ```
 
-React/Vite y la base Express están inicializados. La API expone únicamente health. PostgreSQL/Drizzle implementa el modelo inicial, migration, seed y repositories, mientras los endpoints de dominio y extensiones siguen pendientes.
+React/Vite y Express implementan identidad, publicaciones, imágenes y geolocalización. PostgreSQL/Drizzle/PostGIS aporta persistencia relacional y espacial mediante migrations versionadas; la API expone health y los contratos de dominio documentados.
 
 ## Estructura definitiva propuesta
 
@@ -156,7 +176,7 @@ La raíz coordina `apps/*` y futuros `packages/*` mediante npm workspaces. Exist
 
 ## Datos y geolocalización
 
-PostgreSQL será la fuente de verdad futura. PostGIS se incorporará cuando se implemente búsqueda geoespacial. El punto exacto privado y la ubicación pública aproximada serán campos/conceptos separados, con permisos distintos. Véanse `DATABASE.md` y `PRIVACY.md`.
+PostgreSQL es la fuente de verdad y PostGIS implementa la búsqueda geoespacial. El punto exacto privado y la ubicación pública aproximada son campos separados, con permisos y selecciones distintas. Véanse `DATABASE.md` y `PRIVACY.md`.
 
 ## Autenticación
 
@@ -179,4 +199,4 @@ El matching tradicional comparará especie, raza, color, tamaño, sexo, distanci
 
 ## Decisiones y evolución
 
-Las decisiones aceptadas están en `DECISIONS.md`. El modelo persiste solo las cuatro entidades aprobadas; autenticación, APIs de dominio, PostGIS y deployment no se adelantan.
+Las decisiones aceptadas están en `DECISIONS.md`. Autenticación, publicaciones, imágenes y PostGIS están implementados; deployment productivo y capacidades posteriores permanecen fuera del alcance actual.

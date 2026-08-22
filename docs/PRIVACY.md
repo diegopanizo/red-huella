@@ -1,8 +1,8 @@
 # Privacidad
 
-## Ubicación provisional en publicaciones
+## Ubicación en publicaciones
 
-La API actual devuelve las coordenadas almacenadas sin aproximación. Esto es provisional y no constituye anonimización ni una garantía de privacidad. No deben introducirse datos reales sensibles antes del milestone geoespacial, que separará ubicación exacta interna de ubicación pública aproximada. Las coordenadas no se escriben en logs.
+La API pública devuelve exclusivamente una ubicación aproximada persistida. El punto exacto de LOST/FOUND queda restringido al propietario autenticado y ADOPTION no almacena domicilio exacto. Las coordenadas no se escriben en logs.
 
 ## Datos de autenticación
 
@@ -32,7 +32,17 @@ flowchart LR
 
 ### Estado del modelo actual
 
-`publications.latitude` y `longitude` almacenan provisionalmente la pareja exacta interna y aplican rangos válidos. No existe todavía ubicación pública ni algoritmo de aproximación. En el Milestone 8 se abordará PostGIS y una representación pública separada; el cambio de orden con imágenes está registrado en ADR-021. Hasta entonces deben usarse solo datos sintéticos y conservar la mínima precisión necesaria.
+`publications.exact_location` y `public_location` son columnas `geography(Point,4326)` separadas; la pareja legacy ya no participa en respuestas ni consultas públicas.
+
+ADR-022 implementa una ubicación pública aleatoria, persistida y versionada, generada exclusivamente por servidor. LOST conserva exacta y publica una zona de 1.000 m; FOUND conserva exacta y publica 1.500 m. En ambos casos el centro público se desplaza como máximo el radio declarado mediante cálculo esférico, por lo que la zona contiene el punto exacto. ADOPTION interpreta la entrada como zona, mantiene `exact_location` en `NULL` y publica un radio de 5.000 m. No se recalcula la aproximación en cada GET.
+
+El DTO público elimina la pareja legacy y nunca hace fallback: sin `public_location` devuelve `publicLocation: null`. Toda operación espacial pública usa solo `public_location`. La lectura exacta de LOST/FOUND exige sesión y ownership mediante `/api/v1/publications/:id/manage`. Las coordenadas no se incluyen en logs.
+
+El selector frontend no solicita geolocalización al cargar ni persiste coordenadas en `localStorage`/`sessionStorage`: solo mantiene el valor durante el formulario y lo envía al guardar. En edición, el centro `publicLocation` de ADOPTION es referencia visual y nunca se copia a `exactLocation`. Los modos del componente separan de forma explícita el uso exacto owner del uso como zona.
+
+La exploración cercana también solicita permiso solo tras una acción explícita. El centro del visitante vive en memoria, no se incorpora a la URL visible ni a Web Storage y se descarta, junto con su caché geográfica, al quitar la búsqueda. Se transmite a la API únicamente para ejecutar la consulta solicitada. Cards y mapas públicos reciben solo `publicLocation`; las distancias se describen como aproximadas respecto del centro público y nunca como distancia al animal o al punto exacto.
+
+El Bloque 3 implementa esa separación completa: búsqueda, distancia y orden públicos usan solo el punto aproximado. `/manage` es la única respuesta de publicación que puede contener `exactLocation`, requiere owner y no permite caché compartida; ADOPTION devuelve exacta `null`. La distancia expuesta se redondea y describe distancia al centro público, no al lugar exacto.
 
 ## Imágenes y EXIF
 
