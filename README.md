@@ -260,6 +260,8 @@ El trabajo futuro se priorizará con evidencia: dataset representativo y Recall@
 
 - slide presentacion: `https://docs.google.com/presentation/d/1UnoUEN47D84QB0bbLWvQGo6GCegUCTE1/edit?usp=sharing&ouid=102368770880966002232&rtpof=true&sd=true`
 
+- video presentacion: `https://drive.google.com/file/d/1D6q49hy0SIshTWHo3hDHUB-PXmH7v2tc/view?usp=sharing`
+
 - sitio web montado: `https://51-255-39-243.sslip.io/`
 
 Credenciales destinadas exclusivamente al entorno de demostración:
