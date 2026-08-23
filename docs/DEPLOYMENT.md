@@ -13,7 +13,7 @@ Browser ──HTTPS──> terminador TLS ──HTTP──> web (Nginx :8080)
                                                                └── modelo ONNX read-only
 ```
 
-Solo `web` publica un puerto, ligado por defecto a `127.0.0.1:8080`. PostgreSQL y API viven exclusivamente en la red interna de Compose. HTTPS debe terminar en un reverse proxy del host o en la plataforma; este repositorio no genera certificados ni publica HTTP directamente a Internet.
+Solo `web` publica un puerto, ligado por defecto a `127.0.0.1:8080`. Para ello pertenece a una red `edge` estándar y a la red interna desde la que resuelve `api`; PostgreSQL y API pertenecen exclusivamente a la red interna aislada. HTTPS debe terminar en un reverse proxy del host o en la plataforma; este repositorio no genera certificados ni publica HTTP directamente a Internet.
 
 ## Prerrequisitos
 

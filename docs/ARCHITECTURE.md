@@ -274,7 +274,7 @@ flowchart LR
     MG[Migrate one-shot] --> PG
 ```
 
-Nginx compila `VITE_API_URL=/api/v1`, sirve la SPA con fallback y es el único servicio con puerto publicado. La API runtime instala solo dependencias productivas, se ejecuta como usuario `node`, usa filesystem read-only salvo volúmenes/tmpfs y no contiene `.env` ni el modelo. Un target separado conserva Drizzle Kit exclusivamente para `npm run db:migrate` antes del startup.
+Nginx compila `VITE_API_URL=/api/v1`, sirve la SPA con fallback y es el único servicio con puerto publicado. `web` conecta una red `edge` de entrada con la red interna; API y PostgreSQL nunca se unen a `edge`. La API runtime instala solo dependencias productivas, se ejecuta como usuario `node`, usa filesystem read-only salvo volúmenes/tmpfs y no contiene `.env` ni el modelo. Un target separado conserva Drizzle Kit exclusivamente para `npm run db:migrate` antes del startup.
 
 La imagen PostgreSQL combina pgvector 0.8.5 y PostGIS sobre PostgreSQL 17. Una identidad migradora posee el schema y configura privilegios por defecto para `red_huella_app`, usada por la API. Las extensiones continúan siendo responsabilidad de las migraciones. Health representa readiness de API+DB; no se inventó un liveness independiente.
 

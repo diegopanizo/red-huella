@@ -203,11 +203,24 @@ jobs:
         shell: bash
         run: |
           for attempt in {1..36}; do
-            if curl --fail --silent http://127.0.0.1:18080/ >/dev/null && \
-              curl --fail --silent http://127.0.0.1:18080/api/v1/health >/dev/null; then
+            root_status="$(curl --silent --show-error --output /tmp/red-huella-root.html \
+              --write-out '%{http_code}' --connect-timeout 2 --max-time 5 \
+              http://127.0.0.1:18080/ || true)"
+            health_status="$(curl --silent --show-error --output /tmp/red-huella-health.json \
+              --write-out '%{http_code}' --connect-timeout 2 --max-time 5 \
+              http://127.0.0.1:18080/api/v1/health || true)"
+            echo "Smoke attempt ${attempt}: root=${root_status:-curl-error} health=${health_status:-curl-error}"
+
+            if [ "$root_status" = 200 ] && [ "$health_status" = 200 ]; then
               break
             fi
             if [ "$attempt" -eq 36 ]; then
+              web_id="$(docker compose -f compose.prod.yml ps --quiet web)"
+              docker port "$web_id"
+              docker inspect --format 'Ports={{json .NetworkSettings.Ports}} Networks={{json .NetworkSettings.Networks}}' "$web_id"
+              docker exec "$web_id" test -s /usr/share/nginx/html/index.html
+              curl --verbose --include --connect-timeout 5 --max-time 10 http://127.0.0.1:18080/ || true
+              curl --verbose --include --connect-timeout 5 --max-time 10 http://127.0.0.1:18080/api/v1/health || true
               docker compose -f compose.prod.yml ps --all
               docker compose -f compose.prod.yml logs --no-color
               exit 1

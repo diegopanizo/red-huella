@@ -99,12 +99,14 @@ services:
       - /var/cache/nginx:size=16m,mode=0777
       - /var/run:size=1m,mode=0777
     restart: unless-stopped
-    networks: [internal]
+    networks: [edge, internal]
 
 volumes:
   red_huella_postgres_data:
   red_huella_image_data:
 
 networks:
+  edge:
+    driver: bridge
   internal:
     internal: true

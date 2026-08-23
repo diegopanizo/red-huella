@@ -191,7 +191,7 @@ La auditoría general de cierre del Milestone 9 mantiene cuatro avisos moderados
 
 ## Deployment de referencia
 
-Las imágenes de producción excluyen `.env`, `.data`, Git, tests y `node_modules` locales. API se ejecuta como usuario no root sobre Debian, con root filesystem read-only, volumen persistente privado para imágenes y modelo ONNX montado read-only. Nginx usa su variante unprivileged. PostgreSQL y API no publican puertos; solo Nginx escucha en loopback para un terminador HTTPS externo.
+Las imágenes de producción excluyen `.env`, `.data`, Git, tests y `node_modules` locales. API se ejecuta como usuario no root sobre Debian, con root filesystem read-only, volumen persistente privado para imágenes y modelo ONNX montado read-only. Nginx usa su variante unprivileged. PostgreSQL y API permanecen exclusivamente en una red interna y no publican puertos; Nginx une esa red con una red `edge` estándar y escucha solo en loopback para un terminador HTTPS externo.
 
 La cuenta runtime `red_huella_app` recibe permisos de datos mediante default privileges y no puede ejecutar migraciones. La identidad propietaria queda limitada al job `migrate`; Compose aplica una allowlist para que API no reciba sus credenciales. Los secretos runtime, de migración y de backups deben gestionarse por separado. Los scripts de inicialización solo actúan sobre volúmenes nuevos y nunca justifican borrar datos.
 
