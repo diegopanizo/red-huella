@@ -87,9 +87,11 @@ function SelectionController({
 function ViewportReporter({
   onBoundsChange,
   programmaticMoveRef,
+  skipInitialReport,
 }: {
   onBoundsChange: ((bounds: MapBounds) => void) | undefined
   programmaticMoveRef: React.RefObject<boolean>
+  skipInitialReport: boolean
 }) {
   const map = useMap()
   const report = React.useCallback(() => {
@@ -99,8 +101,49 @@ function ViewportReporter({
   }, [map, onBoundsChange, programmaticMoveRef])
   useMapEvents({ moveend: report, zoomend: report })
   React.useEffect(() => {
-    report()
-  }, [map, report])
+    if (!skipInitialReport) report()
+  }, [map, report, skipInitialReport])
+  return null
+}
+
+function FocusBoundsController({
+  bounds,
+  programmaticMoveRef,
+}: {
+  bounds: MapBounds | null
+  programmaticMoveRef: React.RefObject<boolean>
+}) {
+  const map = useMap()
+  React.useEffect(() => {
+    if (!bounds) return
+    programmaticMoveRef.current = true
+    const release = () => {
+      programmaticMoveRef.current = false
+    }
+    map.once('moveend', release)
+    map.fitBounds(
+      [
+        [bounds.south, bounds.west],
+        [bounds.north, bounds.east],
+      ],
+      { animate: true, padding: [24, 24], maxZoom: GLOBAL_MAP_MAX_ZOOM },
+    )
+    return () => {
+      map.off('moveend', release)
+    }
+  }, [bounds, map, programmaticMoveRef])
+  return null
+}
+
+function VisibilityController({ visible }: { visible: boolean }) {
+  const map = useMap()
+  React.useEffect(() => {
+    if (!visible) return
+    const frame = window.requestAnimationFrame(() => {
+      map.invalidateSize({ animate: false })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [map, visible])
   return null
 }
 
@@ -110,6 +153,8 @@ export interface GlobalPublicationsMapProps {
   onSelectPublication: (id: string) => void
   onOpenPublication: (id: string) => void
   initialBounds: MapBounds
+  focusBounds?: MapBounds | null
+  visible?: boolean
   onBoundsChange?: ((bounds: MapBounds) => void) | undefined
 }
 
@@ -119,6 +164,8 @@ export function GlobalPublicationsMap({
   onSelectPublication,
   onOpenPublication,
   initialBounds,
+  focusBounds = null,
+  visible = true,
   onBoundsChange,
 }: GlobalPublicationsMapProps) {
   const [tileError, setTileError] = React.useState(false)
@@ -145,7 +192,13 @@ export function GlobalPublicationsMap({
         <ViewportReporter
           onBoundsChange={onBoundsChange}
           programmaticMoveRef={programmaticMoveRef}
+          skipInitialReport={focusBounds !== null}
         />
+        <FocusBoundsController
+          bounds={focusBounds}
+          programmaticMoveRef={programmaticMoveRef}
+        />
+        <VisibilityController visible={visible} />
         <SelectionController
           publication={selected}
           programmaticMoveRef={programmaticMoveRef}
@@ -164,8 +217,8 @@ export function GlobalPublicationsMap({
                 icon={divIcon({
                   className: '',
                   html: `<span class="approximate-marker ${publication.type.toLowerCase()}${active ? ' selected' : ''}" aria-hidden="true">${markerLetters[publication.type]}</span>`,
-                  iconSize: [36, 36],
-                  iconAnchor: [18, 18],
+                  iconSize: [44, 44],
+                  iconAnchor: [22, 22],
                 })}
                 keyboard
                 title={markerLabel}
@@ -177,7 +230,7 @@ export function GlobalPublicationsMap({
                 <Popup
                   className="publication-map-popup"
                   maxWidth={320}
-                  minWidth={280}
+                  minWidth={240}
                 >
                   <article
                     className="map-popup"

@@ -606,7 +606,7 @@ function Home() {
             </p>
           }
         >
-          <GlobalMapSection filters={mapFilters} />
+          <GlobalMapSection filters={mapFilters} nearbyArea={nearby} />
         </React.Suspense>
       </section>
     </>

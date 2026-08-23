@@ -19,6 +19,7 @@ vi.mock('./GlobalPublicationsMap', () => ({
     selectedPublicationId,
     onSelectPublication,
     onBoundsChange,
+    focusBounds,
   }: {
     publications: Array<{ id: string }>
     selectedPublicationId: string | null
@@ -29,14 +30,22 @@ vi.mock('./GlobalPublicationsMap', () => ({
       west: number
       east: number
     }) => void
+    focusBounds?: {
+      north: number
+      south: number
+      west: number
+      east: number
+    } | null
   }) => {
     React.useEffect(() => {
-      onBoundsChange({ north: 44.5, south: 27.5, west: -18.5, east: 5 })
-    }, [onBoundsChange])
+      if (!focusBounds)
+        onBoundsChange({ north: 44.5, south: 27.5, west: -18.5, east: 5 })
+    }, [focusBounds, onBoundsChange])
     return (
       <div
         data-testid="map-publications"
         data-selected={selectedPublicationId ?? ''}
+        data-focus-bounds={focusBounds ? JSON.stringify(focusBounds) : ''}
       >
         <button
           type="button"
@@ -78,14 +87,21 @@ const publication = {
   thumbnail: null,
 }
 
-function renderSection(filters = {}) {
+function renderSection(
+  filters = {},
+  nearbyArea: {
+    latitude: number
+    longitude: number
+    radiusMeters: number
+  } | null = null,
+) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <GlobalMapSection filters={filters} />
+        <GlobalMapSection filters={filters} nearbyArea={nearbyArea} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -97,6 +113,154 @@ afterEach(() => {
 })
 
 describe('GlobalMapSection', () => {
+  it('en móvil alterna lista y mapa sin perder resultados, selección ni consultar de nuevo', async () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({
+        matches: true,
+        media: '(max-width: 800px)',
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    )
+    const fetchMock = vi.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({
+            publications: [publication],
+            truncated: false,
+            limit: 500,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    renderSection({ species: 'CAT' as const })
+
+    const listButton = screen.getByRole('button', { name: 'Lista' })
+    const mapButton = screen.getByRole('button', { name: 'Mapa' })
+    const list = document.getElementById('global-map-list')
+    const mapPanel = document.getElementById('global-map-panel')
+    expect(listButton).toHaveAttribute('aria-pressed', 'true')
+    expect(mapButton).toHaveAttribute('aria-pressed', 'false')
+    expect(list).not.toHaveAttribute('hidden')
+    expect(mapPanel).toHaveAttribute('hidden')
+
+    const card = await screen.findByRole('button', { name: /Gato encontrado/ })
+    const callsBeforeToggle = fetchMock.mock.calls.length
+    fireEvent.click(card)
+    expect(mapButton).toHaveAttribute('aria-pressed', 'true')
+    expect(list).toHaveAttribute('hidden')
+    expect(mapPanel).not.toHaveAttribute('hidden')
+    expect(screen.getByTestId('map-publications')).toHaveAttribute(
+      'data-selected',
+      publication.id,
+    )
+
+    fireEvent.click(listButton)
+    expect(card).toHaveAttribute('aria-pressed', 'true')
+    expect(fetchMock).toHaveBeenCalledTimes(callsBeforeToggle)
+    fireEvent.click(mapButton)
+    fireEvent.click(screen.getByRole('button', { name: 'Simular pan' }))
+    expect(
+      screen.getByRole('button', { name: 'Buscar en esta zona' }),
+    ).toBeInTheDocument()
+  })
+
+  it('en escritorio conserva simultáneamente lista y mapa sin selector', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              publications: [publication],
+              truncated: false,
+              limit: 500,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+    renderSection()
+    await screen.findByRole('button', { name: /Gato encontrado/ })
+    expect(
+      screen.queryByRole('group', {
+        name: 'Vista de publicaciones geográficas',
+      }),
+    ).not.toBeInTheDocument()
+    expect(document.getElementById('global-map-list')).not.toHaveAttribute(
+      'hidden',
+    )
+    expect(document.getElementById('global-map-panel')).not.toHaveAttribute(
+      'hidden',
+    )
+  })
+
+  it('aplica Cerca de mí al viewport y mantiene el listado cercano al explorar otra zona', async () => {
+    const storageWrite = vi.spyOn(Storage.prototype, 'setItem')
+    const urls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        urls.push(String(input))
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              publications: [publication],
+              truncated: false,
+              limit: 500,
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+          ),
+        )
+      }),
+    )
+    renderSection(
+      { type: 'LOST' as const },
+      { latitude: 40.4, longitude: -3.7, radiusMeters: 25_000 },
+    )
+
+    expect(
+      await screen.findByText('Mapa centrado en tu zona de búsqueda de 25 km.'),
+    ).toBeInTheDocument()
+    await waitFor(() =>
+      expect(
+        urls.some((value) => {
+          const url = new URL(value)
+          return (
+            url.searchParams.get('type') === 'LOST' &&
+            Number(url.searchParams.get('north')) > 40.4 &&
+            Number(url.searchParams.get('south')) < 40.4
+          )
+        }),
+      ).toBe(true),
+    )
+    expect(screen.getByTestId('map-publications')).toHaveAttribute(
+      'data-focus-bounds',
+      expect.stringContaining('"north"'),
+    )
+    expect(
+      urls.every((url) => !/[?&](latitude|longitude|radiusMeters)=/.test(url)),
+    ).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Simular pan' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar en esta zona' }))
+    expect(
+      await screen.findByText(
+        'El listado sigue filtrado Cerca de mí; el mapa muestra la zona que elegiste.',
+      ),
+    ).toBeInTheDocument()
+    expect(storageWrite).not.toHaveBeenCalled()
+    storageWrite.mockRestore()
+  })
+
   it('muestra loading, lista y mapa con los mismos IDs, selección y aviso truncated', async () => {
     vi.stubGlobal(
       'fetch',

@@ -102,6 +102,8 @@ Milestone 10 Bloque 1 añade unitarios del schema estricto, DTO allowlist, thumb
 
 El Bloque 2 prueba la serialización exclusiva de bounds/filtros y el contrato de respuesta; markers, popup, enlaces, fallback de imagen, selección lista↔mapa, leyenda y ausencia textual de datos privados; además de loading, error general, 429, truncado y refetch por filtros. React-Leaflet se sustituye por dobles observables en JSDOM. La separación lazy se valida en el build, no acoplando unit tests a nombres hash de chunks.
 
+Los Bloques 4–6 conservan esas pruebas y añaden la capa de clustering, integración de Cerca de mí mediante bounds, `fitBounds`, divergencia explícita al explorar otra zona y ausencia de persistencia. Para el cierre móvil se simula `matchMedia`: se comprueban vista Lista por defecto, alternancia sin refetch, selección conservada, apertura del mapa desde la mini ficha, coexistencia desktop, disponibilidad de «Buscar en esta zona» e `invalidateSize` al revelar Leaflet. JSDOM verifica estados, atributos y comportamiento, no geometría ni píxeles; la revisión visual real sigue siendo una comprobación manual.
+
 El Bloque 3 añade unitarios para normalización de longitud, bounds estándar, Web Mercator, antimeridiano, inválidos y comparación con tolerancia. El flujo prueba que `moveend`/`zoomend` solo cambian pending, múltiples movimientos no hacen requests, el click usa el último viewport, filtros conservan applied, el centrado programático no genera CTA, una petición anterior queda abortada y no pisa la nueva, errores/429 conservan datos, la selección desaparecida se limpia y no hay escrituras en Web Storage.
 
 ## Pirámide prevista

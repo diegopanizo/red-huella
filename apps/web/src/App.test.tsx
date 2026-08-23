@@ -43,10 +43,14 @@ vi.mock('./features/locations/PublicLocationMap', () => ({
     </div>
   ),
 }))
+const { globalMapSection } = vi.hoisted(() => ({
+  globalMapSection: vi.fn(),
+}))
 vi.mock('./features/locations/GlobalMapSection', () => ({
-  GlobalMapSection: () => (
-    <div data-testid="global-map-section">Mapa global</div>
-  ),
+  GlobalMapSection: (props: unknown) => {
+    globalMapSection(props)
+    return <div data-testid="global-map-section">Mapa global</div>
+  },
 }))
 
 const publication = {
@@ -280,6 +284,17 @@ describe('frontend funcional', () => {
     })
     success({ coords: { latitude: 40.4, longitude: -3.7 } })
     await waitFor(() =>
+      expect(globalMapSection).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          nearbyArea: {
+            latitude: 40.4,
+            longitude: -3.7,
+            radiusMeters: 25_000,
+          },
+        }),
+      ),
+    )
+    await waitFor(() =>
       expect(
         requestedUrls.some(
           (url) =>
@@ -304,6 +319,13 @@ describe('frontend funcional', () => {
     fireEvent.change(screen.getByLabelText('Radio'), {
       target: { value: '5000' },
     })
+    await waitFor(() =>
+      expect(globalMapSection).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          nearbyArea: expect.objectContaining({ radiusMeters: 5_000 }),
+        }),
+      ),
+    )
     await waitFor(() =>
       expect(
         requestedUrls.some(

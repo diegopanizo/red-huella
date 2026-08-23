@@ -19,6 +19,8 @@ const mapEvents = vi.fn()
 const map = {
   getZoom: () => 6,
   flyTo: vi.fn(),
+  fitBounds: vi.fn(),
+  invalidateSize: vi.fn(),
   once: vi.fn(),
   off: vi.fn(),
   getBounds: vi.fn<
@@ -101,6 +103,8 @@ afterEach(() => {
   markerClusterGroup.mockClear()
   mapEvents.mockClear()
   map.flyTo.mockClear()
+  map.fitBounds.mockClear()
+  map.invalidateSize.mockClear()
   map.once.mockClear()
   map.off.mockClear()
   map.getBounds.mockClear()
@@ -240,5 +244,55 @@ describe('GlobalPublicationsMap', () => {
     expect(map.flyTo).toHaveBeenCalledOnce()
     act(() => handlers.moveend())
     expect(onBoundsChange).toHaveBeenCalledTimes(callsBeforeSelection)
+  })
+
+  it('centra una zona cercana mediante bounds sin dibujar la ubicación del usuario', () => {
+    render(
+      <MemoryRouter>
+        <GlobalPublicationsMap
+          publications={[publication]}
+          selectedPublicationId={null}
+          onSelectPublication={vi.fn()}
+          onOpenPublication={vi.fn()}
+          initialBounds={{ north: 44.5, south: 27.5, west: -18.5, east: 5 }}
+          focusBounds={{ north: 40.5, south: 40.3, west: -3.8, east: -3.6 }}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(map.fitBounds).toHaveBeenCalledWith(
+      [
+        [40.3, -3.8],
+        [40.5, -3.6],
+      ],
+      expect.objectContaining({ maxZoom: 15 }),
+    )
+    expect(screen.getByTestId('marker-cluster-group')).toBeInTheDocument()
+    expect(document.body).not.toHaveTextContent('40.5')
+  })
+
+  it('recalcula el tamaño cuando el panel móvil pasa a ser visible', async () => {
+    const props = {
+      publications: [publication],
+      selectedPublicationId: null,
+      onSelectPublication: vi.fn(),
+      onOpenPublication: vi.fn(),
+      initialBounds: { north: 44.5, south: 27.5, west: -18.5, east: 5 },
+    }
+    const view = render(
+      <MemoryRouter>
+        <GlobalPublicationsMap {...props} visible={false} />
+      </MemoryRouter>,
+    )
+    expect(map.invalidateSize).not.toHaveBeenCalled()
+
+    view.rerender(
+      <MemoryRouter>
+        <GlobalPublicationsMap {...props} visible />
+      </MemoryRouter>,
+    )
+    await waitFor(() =>
+      expect(map.invalidateSize).toHaveBeenCalledWith({ animate: false }),
+    )
   })
 })

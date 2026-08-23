@@ -13,6 +13,7 @@ import type {
 import { GlobalPublicationsMap } from './GlobalPublicationsMap'
 import { mapBoundsEqual } from './map-bounds'
 import { DEMO_SPAIN_INITIAL_BOUNDS } from './map-config'
+import { nearbyMapAreaToBounds, type NearbyMapArea } from './nearby-map-area'
 
 export interface GlobalMapFilters {
   type?: PublicationType | undefined
@@ -30,6 +31,22 @@ const formatDate = (value: string) =>
   new Intl.DateTimeFormat('es-ES', { dateStyle: 'medium' }).format(
     new Date(value),
   )
+
+const MOBILE_MAP_QUERY = '(max-width: 800px)'
+
+function useMobileMapLayout(): boolean {
+  const [mobile, setMobile] = React.useState(
+    () => window.matchMedia?.(MOBILE_MAP_QUERY).matches ?? false,
+  )
+  React.useEffect(() => {
+    if (!window.matchMedia) return
+    const media = window.matchMedia(MOBILE_MAP_QUERY)
+    const update = (event: MediaQueryListEvent) => setMobile(event.matches)
+    media.addEventListener('change', update)
+    return () => media.removeEventListener('change', update)
+  }, [])
+  return mobile
+}
 
 function MiniThumbnail({ publication }: { publication: MapPublication }) {
   const [broken, setBroken] = React.useState(false)
@@ -52,36 +69,75 @@ function MiniThumbnail({ publication }: { publication: MapPublication }) {
   )
 }
 
-export function GlobalMapSection({ filters }: { filters: GlobalMapFilters }) {
+export function GlobalMapSection({
+  filters,
+  nearbyArea = null,
+}: {
+  filters: GlobalMapFilters
+  nearbyArea?: NearbyMapArea | null
+}) {
+  const mobileLayout = useMobileMapLayout()
+  const [mobileView, setMobileView] = React.useState<'list' | 'map'>('list')
   const [appliedBounds, setAppliedBounds] = React.useState<MapBounds | null>(
     null,
   )
-  const [pendingBounds, setPendingBounds] = React.useState<MapBounds | null>(
-    null,
-  )
+  const [pendingZone, setPendingZone] = React.useState<{
+    bounds: MapBounds
+    nearbyScope: string | null
+  } | null>(null)
   const [retainedData, setRetainedData] =
     React.useState<MapPublicationsResponse | null>(null)
   const [selection, setSelection] = React.useState<{
     id: string
     scope: string
   } | null>(null)
-  const captureInitialBounds = React.useCallback((bounds: MapBounds) => {
-    setAppliedBounds((current) => current ?? bounds)
-    setPendingBounds(bounds)
-  }, [])
+  const nearbyBounds = React.useMemo(
+    () => (nearbyArea ? nearbyMapAreaToBounds(nearbyArea) : null),
+    [nearbyArea],
+  )
+  const nearbyScope = nearbyArea
+    ? `${nearbyArea.latitude}:${nearbyArea.longitude}:${nearbyArea.radiusMeters}`
+    : null
+  const [customMapZoneScope, setCustomMapZoneScope] = React.useState<
+    string | null
+  >(null)
+  const usesCustomMapZone =
+    nearbyScope !== null && customMapZoneScope === nearbyScope
+  const effectiveAppliedBounds =
+    nearbyBounds && !usesCustomMapZone ? nearbyBounds : appliedBounds
+  const effectivePendingBounds =
+    nearbyBounds &&
+    !usesCustomMapZone &&
+    pendingZone?.nearbyScope !== nearbyScope
+      ? nearbyBounds
+      : (pendingZone?.bounds ?? null)
+  const mapZone = nearbyArea
+    ? usesCustomMapZone
+      ? 'custom'
+      : 'nearby'
+    : 'default'
+  const captureInitialBounds = React.useCallback(
+    (bounds: MapBounds) => {
+      setAppliedBounds((current) => current ?? bounds)
+      setPendingZone({ bounds, nearbyScope })
+    },
+    [nearbyScope],
+  )
   const itemRefs = React.useRef(new Map<string, HTMLElement>())
-  const selectionScope = JSON.stringify({ appliedBounds, filters })
+  const selectionScope = JSON.stringify({ effectiveAppliedBounds, filters })
   const selectedPublicationId =
     selection?.scope === selectionScope ? selection.id : null
-  const selectPublication = (id: string) =>
+  const selectPublication = (id: string) => {
     setSelection({ id, scope: selectionScope })
+    if (mobileLayout) setMobileView('map')
+  }
   const result = useQuery({
-    queryKey: ['map-publications', appliedBounds, filters],
+    queryKey: ['map-publications', effectiveAppliedBounds, filters],
     queryFn: ({ signal }) => {
-      if (!appliedBounds) throw new Error('Map bounds are not ready')
-      return api.getMapPublications(appliedBounds, filters, signal)
+      if (!effectiveAppliedBounds) throw new Error('Map bounds are not ready')
+      return api.getMapPublications(effectiveAppliedBounds, filters, signal)
     },
-    enabled: appliedBounds !== null,
+    enabled: effectiveAppliedBounds !== null,
     placeholderData: keepPreviousData,
   })
   React.useEffect(() => {
@@ -94,7 +150,10 @@ export function GlobalMapSection({ filters }: { filters: GlobalMapFilters }) {
   const publications = displayedData?.publications ?? []
   const limited =
     result.error instanceof ApiError && result.error.status === 429
-  const boundsChanged = !mapBoundsEqual(appliedBounds, pendingBounds)
+  const boundsChanged = !mapBoundsEqual(
+    effectiveAppliedBounds,
+    effectivePendingBounds,
+  )
   const canRetryFailedZone = result.isError && displayedData !== null
   const showSearchAction =
     boundsChanged ||
@@ -102,8 +161,10 @@ export function GlobalMapSection({ filters }: { filters: GlobalMapFilters }) {
     (result.isFetching && displayedData !== null)
   const applyPendingBounds = () => {
     if (displayedData) setRetainedData(displayedData)
-    if (boundsChanged && pendingBounds) setAppliedBounds(pendingBounds)
-    else void result.refetch()
+    if (boundsChanged && effectivePendingBounds) {
+      setAppliedBounds(effectivePendingBounds)
+      if (nearbyScope) setCustomMapZoneScope(nearbyScope)
+    } else void result.refetch()
   }
   return (
     <>
@@ -116,10 +177,48 @@ export function GlobalMapSection({ filters }: { filters: GlobalMapFilters }) {
       <p className="map-privacy-legend">
         Las ubicaciones mostradas son aproximadas para proteger la privacidad.
       </p>
+      {nearbyArea && mapZone === 'nearby' && (
+        <p className="map-nearby-context" role="status">
+          Mapa centrado en tu zona de búsqueda de{' '}
+          {nearbyArea.radiusMeters / 1000} km.
+        </p>
+      )}
+      {nearbyArea && mapZone === 'custom' && (
+        <p className="map-nearby-context" role="status">
+          El listado sigue filtrado Cerca de mí; el mapa muestra la zona que
+          elegiste.
+        </p>
+      )}
+      {mobileLayout && (
+        <div
+          className="mobile-map-view-switch"
+          role="group"
+          aria-label="Vista de publicaciones geográficas"
+        >
+          <button
+            type="button"
+            aria-controls="global-map-list"
+            aria-pressed={mobileView === 'list'}
+            onClick={() => setMobileView('list')}
+          >
+            Lista
+          </button>
+          <button
+            type="button"
+            aria-controls="global-map-panel"
+            aria-pressed={mobileView === 'map'}
+            onClick={() => setMobileView('map')}
+          >
+            Mapa
+          </button>
+        </div>
+      )}
       <div className="global-map-layout">
         <div
+          id="global-map-list"
           className="map-mini-list"
           aria-label="Publicaciones mostradas en el mapa"
+          hidden={mobileLayout && mobileView !== 'list'}
         >
           {result.isError && (
             <p className="alert map-update-error" role="alert">
@@ -130,7 +229,7 @@ export function GlobalMapSection({ filters }: { filters: GlobalMapFilters }) {
                   : 'No pudimos cargar las publicaciones del mapa.'}
             </p>
           )}
-          {!appliedBounds || (result.isLoading && !displayedData) ? (
+          {!effectiveAppliedBounds || (result.isLoading && !displayedData) ? (
             <p className="loading" aria-live="polite">
               Cargando mapa de publicaciones…
             </p>
@@ -178,7 +277,11 @@ export function GlobalMapSection({ filters }: { filters: GlobalMapFilters }) {
             })
           )}
         </div>
-        <div className="interactive-map-panel">
+        <div
+          id="global-map-panel"
+          className="interactive-map-panel"
+          hidden={mobileLayout && mobileView !== 'map'}
+        >
           {showSearchAction && (
             <div className="map-search-area" role="status">
               {boundsChanged && (
@@ -204,6 +307,8 @@ export function GlobalMapSection({ filters }: { filters: GlobalMapFilters }) {
             onSelectPublication={selectPublication}
             onOpenPublication={() => undefined}
             initialBounds={DEMO_SPAIN_INITIAL_BOUNDS}
+            focusBounds={usesCustomMapZone ? null : nearbyBounds}
+            visible={!mobileLayout || mobileView === 'map'}
             onBoundsChange={captureInitialBounds}
           />
         </div>

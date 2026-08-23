@@ -468,6 +468,9 @@ textarea {
   align-items: stretch;
   min-width: 0;
 }
+.mobile-map-view-switch {
+  display: none;
+}
 .map-mini-list {
   height: var(--global-map-height);
   max-height: var(--global-map-height);
@@ -576,8 +579,8 @@ textarea {
   grid-column: 1 / -1;
 }
 .approximate-marker {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 3px solid #fff;
@@ -1240,8 +1243,30 @@ button.danger {
     min-height: 260px;
   }
   .global-map-layout {
-    --global-map-height: clamp(24rem, 62vh, 30rem);
+    --global-map-height: clamp(22rem, 58vh, 28rem);
     grid-template-columns: 1fr;
+  }
+  .mobile-map-view-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    padding: 0.25rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-soft-primary);
+  }
+  .mobile-map-view-switch button {
+    min-height: 2.75rem;
+    color: var(--green);
+    background: transparent;
+  }
+  .mobile-map-view-switch button[aria-pressed='true'] {
+    color: #fff;
+    background: var(--green);
+  }
+  .global-map-layout > [hidden] {
+    display: none;
   }
   .map-mini-list {
     height: auto;
@@ -1249,7 +1274,7 @@ button.danger {
   }
   .global-map-canvas {
     height: var(--global-map-height);
-    min-height: 24rem;
+    min-height: 22rem;
   }
   .map-search-area {
     position: relative;
@@ -1259,6 +1284,32 @@ button.danger {
     width: 100%;
     margin-bottom: 0.5rem;
     flex-direction: column;
+  }
+  .map-search-area button,
+  .map-mini-card > a {
+    min-height: 2.75rem;
+  }
+  .map-nearby-context {
+    margin-block: 0.5rem;
+    font-size: 0.9rem;
+  }
+  .publication-map-popup .leaflet-popup-content {
+    max-width: calc(100vw - 4rem);
+    margin: 0.7rem;
+  }
+  .global-map-canvas .leaflet-control-zoom a {
+    width: 2.75rem;
+    height: 2.75rem;
+    line-height: 2.75rem;
+  }
+  .global-map-canvas .marker-cluster {
+    width: 2.75rem !important;
+    height: 2.75rem !important;
+  }
+  .map-popup a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
   }
 }
 @media (max-width: 560px) {

@@ -52,9 +52,9 @@ Contacto voluntario por publicación mediante WhatsApp, teléfono y email, aisla
 
 > Cambio de orden aprobado al iniciar el Milestone 9: este número estaba reservado anteriormente a Favoritos. Contacto se prioriza para completar el ciclo de una publicación; Favoritos y los milestones futuros se desplazan una posición sin afirmar que hayan sido implementados.
 
-## Milestone 10 — Mapa global de publicaciones (en curso)
+## Milestone 10 — Mapa global de publicaciones (completado)
 
-El Bloque 1 implementa el contrato público y backend de consulta por viewport, con privacidad espacial, antimeridiano, límite y rate limiting. El Bloque 2 añade en Explorar un mapa Leaflet básico con mini lista, marcadores aproximados, popup, filtros compartidos y carga diferida. El Bloque 3 implementa viewport pending/applied, «Buscar en esta zona», cancelación de respuestas obsoletas y conservación ante errores; su pulido 3.1 amplía y equilibra el layout responsive sin alterar ese comportamiento. El Bloque 4 incorpora clustering cliente con expansión estándar por zoom y conserva los markers, popups y selección existentes. La integración con Cerca de mí y la experiencia móvil final permanecen pendientes.
+Completado el mapa global con contrato público por viewport basado exclusivamente en `public_location`, filtros, privacidad espacial, antimeridiano, límite, rate limiting y consulta GiST. Explorar integra mapa Leaflet y mini lista sincronizados, thumbnails, popups, clustering, selección, viewport pending/applied, «Buscar en esta zona», cancelación de respuestas obsoletas y conservación ante errores. Cerca de mí centra el mapa según su radio sin persistir ni representar la ubicación del navegador. En móvil, un selector accesible Lista/Mapa mantiene ambos paneles y sus resultados montados, conserva selección y evita scroll y refetch innecesarios; desktop mantiene la vista simultánea. Tests unitarios, frontend y PostgreSQL cubren contrato, privacidad e interacción.
 
 El refinamiento visual transversal iniciado en 2026 define tokens, jerarquía de acciones y una presentación editorial responsive para header, hero, filtros, cards y mapa. Es una mejora de UX sobre funcionalidades existentes y no cierra el milestone ni incorpora clustering o búsqueda visual.
 
