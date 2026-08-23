@@ -10,7 +10,15 @@ import { Router } from 'express'
 import { Pool } from 'pg'
 import sharp from 'sharp'
 import request from 'supertest'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
 import { createApp } from '../app.js'
 import { createSessionToken } from '../auth/session-token.js'
@@ -27,6 +35,7 @@ import { DrizzleSessionRepository } from '../repositories/drizzle-session.reposi
 import { DrizzleUserRepository } from '../repositories/drizzle-user.repository.js'
 import { createPublicationImageContentRouter } from '../routes/publication-image.routes.js'
 import { createPublicationRouter } from '../routes/publication.routes.js'
+import { VisualEmbeddingGenerator } from '../visual-search/visual-embedding.js'
 
 const pool = new Pool({
   connectionString: assertSafeTestDatabaseUrl(env),
@@ -76,8 +85,16 @@ afterAll(async () => {
 
 describe('publication image HTTP and PostgreSQL integration', () => {
   it('uploads JPEG/PNG/WebP, hides keys and serves independent variants with 304', async () => {
+    const inference = vi
+      .spyOn(
+        VisualEmbeddingGenerator.prototype,
+        'generateImageEmbeddingWithMetrics',
+      )
+      .mockImplementation(() => new Promise(() => undefined))
     const owner = await createOwnerPublication()
     const upload = await uploadFiles(owner, [validJpeg, validPng, validWebp])
+    expect(inference).not.toHaveBeenCalled()
+    inference.mockRestore()
     expect(upload.status).toBe(201)
     expect(upload.body.images).toHaveLength(3)
     expect(JSON.stringify(upload.body)).not.toContain('storageKey')
@@ -112,6 +129,13 @@ describe('publication image HTTP and PostgreSQL integration', () => {
     expect(
       aggregate?.images.every((item) => item.mimeType === 'image/webp'),
     ).toBe(true)
+    const pendingEmbeddings = await database
+      .select()
+      .from(schema.publicationImageEmbeddings)
+    expect(pendingEmbeddings).toHaveLength(3)
+    expect(pendingEmbeddings.every((item) => item.status === 'PENDING')).toBe(
+      true,
+    )
     for (const publicationResponse of [
       await request(app).get(`/api/v1/publications/${owner.publicationId}`),
       await request(app).get('/api/v1/publications'),

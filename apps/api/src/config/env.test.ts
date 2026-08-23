@@ -24,6 +24,9 @@ describe('parseEnvironment', () => {
       ...validEnvironment,
       PORT: 3000,
       IMAGE_STORAGE_LOCAL_ROOT: expectedStorageRoot,
+      VISUAL_EMBEDDING_PROCESSOR_ENABLED: false,
+      VISUAL_EMBEDDING_POLL_INTERVAL_MS: 30_000,
+      VISUAL_EMBEDDING_BATCH_SIZE: 5,
     })
   })
 
@@ -48,6 +51,27 @@ describe('parseEnvironment', () => {
       parseEnvironment({
         ...validEnvironment,
         IMAGE_STORAGE_LOCAL_ROOT: '   ',
+      }),
+    ).toThrow(/Configuraci/)
+  })
+
+  it('valida la configuracion del procesador visual', () => {
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        VISUAL_EMBEDDING_PROCESSOR_ENABLED: 'yes',
+      }),
+    ).toThrow(/Configuraci/)
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        VISUAL_EMBEDDING_POLL_INTERVAL_MS: '4999',
+      }),
+    ).toThrow(/Configuraci/)
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        VISUAL_EMBEDDING_BATCH_SIZE: '51',
       }),
     ).toThrow(/Configuraci/)
   })

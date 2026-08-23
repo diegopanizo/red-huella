@@ -103,6 +103,84 @@ describe('API de imágenes', () => {
   })
 })
 
+describe('API de búsqueda visual', () => {
+  it('envía imagen, filtros y signal sin fijar Content-Type', async () => {
+    const fetchMock = vi.fn<
+      (input: RequestInfo | URL, options?: RequestInit) => Promise<Response>
+    >(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const file = new File(['image'], 'pet.webp', { type: 'image/webp' })
+    const controller = new AbortController()
+
+    await api.searchPublicationsByImage(
+      file,
+      { targetType: 'LOST', species: 'DOG', limit: 20 },
+      controller.signal,
+    )
+
+    const options = fetchMock.mock.calls[0]?.[1]
+    if (!options || !(options.body instanceof FormData))
+      throw new Error('Expected multipart request')
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      'http://localhost:3000/api/v1/publications/search-by-image',
+    )
+    expect(options.credentials).toBe('include')
+    expect(options.signal).toBe(controller.signal)
+    expect(new Headers(options.headers).has('Content-Type')).toBe(false)
+    expect(options.body.get('image')).toBe(file)
+    expect(options.body.get('targetType')).toBe('LOST')
+    expect(options.body.get('species')).toBe('DOG')
+    expect(options.body.get('limit')).toBe('20')
+  })
+
+  it('omite filtros opcionales y conserva errores HTTP tipados', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'VISUAL_SEARCH_RATE_LIMITED',
+              message: 'Too many',
+              requestId: 'req-1',
+            },
+          }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+    const file = new File(['image'], 'pet.jpg', { type: 'image/jpeg' })
+
+    await api.searchPublicationsByImage(file, { limit: 20 })
+    const body = fetchMock.mock.calls[0]?.[1]?.body
+    if (!(body instanceof FormData)) throw new Error('Expected FormData')
+    expect(body.has('targetType')).toBe(false)
+    expect(body.has('species')).toBe(false)
+    await expect(
+      api.searchPublicationsByImage(file, { limit: 20 }),
+    ).rejects.toEqual(
+      expect.objectContaining({
+        status: 429,
+        code: 'VISUAL_SEARCH_RATE_LIMITED',
+        requestId: 'req-1',
+      }),
+    )
+  })
+})
+
 describe('API owner de contacto', () => {
   it('lee y reemplaza ajustes con sesión y JSON', async () => {
     const fetchMock = vi.fn(

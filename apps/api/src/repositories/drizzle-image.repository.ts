@@ -5,6 +5,7 @@ import {
   publicationImages,
   storageDeletionJobs,
 } from '../database/schema/publication-images.js'
+import { publicationImageEmbeddings } from '../database/schema/publication-image-embeddings.js'
 import { publications } from '../database/schema/publications.js'
 import type {
   ImageRepository,
@@ -57,16 +58,27 @@ export class DrizzleImageRepository implements ImageRepository {
         if (existing.length + input.images.length > input.maximumImages)
           return { outcome: 'too_many' as const }
 
+        const imageValues = input.images.map((image, index) => {
+          const { pendingEmbedding, ...metadata } = image
+          void pendingEmbedding
+          return {
+            ...metadata,
+            publicationId: input.publicationId,
+            position: existing.length + index,
+          }
+        })
         const inserted = await tx
           .insert(publicationImages)
-          .values(
-            input.images.map((image, index) => ({
-              ...image,
-              publicationId: input.publicationId,
-              position: existing.length + index,
-            })),
-          )
+          .values(imageValues)
           .returning()
+        await tx.insert(publicationImageEmbeddings).values(
+          input.images.map((image) => ({
+            publicationImageId: image.id,
+            modelId: image.pendingEmbedding.modelId,
+            modelVersion: image.pendingEmbedding.modelVersion,
+            imageChecksum: image.pendingEmbedding.imageChecksum,
+          })),
+        )
         return { outcome: 'inserted' as const, images: inserted }
       }),
     )

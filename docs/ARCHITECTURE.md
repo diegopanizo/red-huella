@@ -24,6 +24,12 @@ El frontend owner encapsula WhatsApp, teléfono y email en `ContactSettingsField
 
 ## Flujo frontend
 
+La búsqueda visual usa una ruta dedicada `/search-by-image`, enlazada desde Explorar para no sobrecargar el mapa. `VisualSearchPage` presenta la interacción; `useVisualSearch` mantiene `File`, object URL, estados y cancelación; el service construye `FormData` y conserva cookies. Cambiar foto, repetir, resetear o desmontar aborta la solicitud anterior, y un identificador monotónico impide que una respuesta obsoleta sustituya resultados recientes.
+
+El flujo es `Browser File → multipart temporal → embedding API → pgvector → candidatos → descarte de la imagen query`. El navegador no persiste el archivo ni lo codifica como base64. El bundle web no contiene Sharp, ONNX ni el modelo CLIP.
+
+El smoke real de cierre confirmó sesión HTTP, multipart, preprocessing, ONNX y ranking pgvector. El proceso carga una única sesión lazy compartida: RSS pasó aproximadamente de 87 MiB a 295 MiB y quedó en 301 MiB tras un segundo lote, sin crecimiento lineal por request. Son observaciones locales, no un SLO. La validación visual manual en navegador continúa pendiente.
+
 `Page/feature → TanStack Query o formulario → cliente API central → fetch credentials: include → Express API`.
 
 `AuthProvider` mantiene una única query `['auth','me']`. React Router separa rutas públicas y protegidas; estas últimas redirigen a login solo como UX. Los formularios auth usan React Hook Form/Zod y los formularios de publicación construyen allowlists explícitas. CSS propio responsive evita acoplamiento a un framework visual.
@@ -232,5 +238,15 @@ flowchart LR
 El matching tradicional comparará especie, raza, color, tamaño, sexo, distancia y fecha mediante un servicio independiente y testeable. El proveedor de embeddings será intercambiable. La similitud visual complementará otros indicios y se mostrará como “Posible coincidencia”, nunca como identidad confirmada.
 
 ## Decisiones y evolución
+
+### Persistencia visual del Milestone 11
+
+El Bloque 1 incorpora pgvector detrás de `PublicationImageEmbeddingRepository`. La implementación Drizzle gestiona `PENDING/READY/FAILED`, valida vectores L2 de 512 dimensiones y condiciona resultados por checksum. La tabla no forma parte de selecciones de publicaciones, mapa, owner o contacto; todavía no existe ruta, controller, worker ni integración con uploads. La futura búsqueda usará coseno exacto dentro del mismo modelo y versión.
+
+El Bloque 2 añade un caso de uso interno `storage → checksum canónico → ONNX → repository` y un CLI secuencial por lotes. Los uploads solo insertan PENDING transaccionalmente y nunca esperan inferencia.
+
+El Bloque 3 conecta ese mismo caso de uso a `VisualEmbeddingProcessor`: un componente independiente de HTTP que selecciona PENDING no archivados, procesa secuencialmente lotes pequeños y programa el siguiente ciclo con `setTimeout` al finalizar. El servidor empieza a escuchar antes de arrancarlo y su shutdown detiene el timer y espera el item en curso. Modelo y sesión permanecen lazy y compartidos. `visual:process-pending` ejecuta un solo ciclo; `visual:backfill` continúa siendo la herramienta administrativa para dry-run, límite y retry de FAILED. Ambos usan advisory locks por imagen. Todavía no existe endpoint de búsqueda.
+
+El Bloque 4 añade `route → controller → SearchPublicationsByImageService → VisualSearchRepository → pgvector`. El multipart mantiene una sola imagen en memoria, el service genera un embedding efímero y el repository calcula coseno y agregación en una única consulta. La imagen, el vector y el lifecycle de la query nunca se persisten. La sesión ONNX global del módulo se comparte con el processor; no existe pool adicional.
 
 Las decisiones aceptadas están en `DECISIONS.md`. Autenticación, publicaciones, imágenes y PostGIS están implementados; deployment productivo y capacidades posteriores permanecen fuera del alcance actual.

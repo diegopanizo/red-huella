@@ -45,6 +45,30 @@ const environmentSchema = z.object({
     .min(1)
     .default('.data/uploads')
     .transform((value) => path.resolve(repositoryRoot, value)),
+  VISUAL_MODEL_PATH: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .transform((value) =>
+      value === undefined ? undefined : path.resolve(repositoryRoot, value),
+    ),
+  VISUAL_EMBEDDING_PROCESSOR_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  VISUAL_EMBEDDING_POLL_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(5_000)
+    .max(3_600_000)
+    .default(30_000),
+  VISUAL_EMBEDDING_BATCH_SIZE: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(5),
 })
 
 export type Environment = z.infer<typeof environmentSchema>

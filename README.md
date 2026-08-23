@@ -20,9 +20,9 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 9 completado (contacto entre usuarios).**
+**En desarrollo — Milestone 11 en curso (búsqueda visual).**
 
-La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía, mapas aproximados, una primera interfaz global de mapa por viewport y contacto autenticado por publicación mediante WhatsApp, teléfono o email. Clustering y refresco interactivo por nueva zona aún están pendientes; no existen chat interno ni notificaciones. La API Express usa PostgreSQL 17 + PostGIS, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
+La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía, mapas aproximados, mapa global, contacto autenticado y búsqueda visual por una foto efímera. Esta última recupera candidatos por similitud mediante CLIP y pgvector; no identifica animales ni expresa una probabilidad. La API Express usa PostgreSQL 17 + PostGIS + pgvector, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
 
 ## Stack tecnológico
 
@@ -31,7 +31,7 @@ La aplicación implementa autenticación, publicaciones e imágenes, ubicación 
 | Frontend        | Funcional        | React 19, Vite, TypeScript, Leaflet y React-Leaflet                   |
 | Backend         | Base técnica     | Node.js, Express, TypeScript, Helmet, CORS y Zod                      |
 | Base de datos   | Geoespacial      | PostgreSQL 17, PostGIS 3.6, `pg`, Drizzle, migrations y seed          |
-| Matching visual | Futuro           | pgvector y proveedor desacoplado de embeddings                        |
+| Matching visual | En validación    | CLIP ViT-B/32, ONNX Runtime Node, pgvector y búsqueda coseno exacta   |
 | Testing         | Base configurada | Vitest, React Testing Library y Supertest; Playwright queda pendiente |
 | Infraestructura | CI inicial       | GitHub Actions; plataforma de despliegue pendiente                    |
 
@@ -86,6 +86,8 @@ npm run dev:api
 La API usa por defecto `http://localhost:3000`. También se pueden iniciar ambos procesos con `npm run dev`; `concurrently` coordina y cierra ambos procesos de forma multiplataforma.
 
 Antes de iniciar la API, copia `.env.example` a `.env` y adapta las URLs a tu instalación. `DATABASE_TEST_URL` es opcional para la API, pero obligatoria para `test:db`.
+
+Para búsqueda visual descarga el artefacto fijado según [docs/VISUAL_SEARCH_SPIKE.md](docs/VISUAL_SEARCH_SPIKE.md), verifica su SHA-256 y configura `VISUAL_MODEL_PATH`. El modelo vive en `.data/models`, está ignorado por Git y nunca forma parte del bundle frontend.
 
 ## Health endpoint
 

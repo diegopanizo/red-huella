@@ -1,5 +1,15 @@
 # Política y estrategia de seguridad
 
+## Persistencia de embeddings visuales
+
+Los vectores son internos y no forman parte de contratos HTTP, logs o errores. La persistencia acepta solo 512 valores finitos con norma L2 aproximadamente uno y no normaliza silenciosamente. `markReady`/`markFailed` exigen el checksum vigente para descartar inferencias obsoletas. Los fallos se limitan a una allowlist y nunca incluyen stacks, mensajes ONNX, rutas, bytes o PII. La búsqueda futura deberá comparar solo READY del mismo modelo y revisión.
+
+El pipeline conserva los límites JPEG/PNG/WebP, 8 MiB, 25 MP, 10.000 px y una página. Errores globales de configuración/carga abortan el backfill; solo fallos propios de una imagen se registran en su lifecycle.
+
+El processor es opt-in, valida intervalo (5 s–1 h) y lote (1–50), mantiene concurrencia uno y nunca ejecuta ONNX en la request de upload. Sin modelo no arranca; si la carga falla se deshabilita hasta reiniciar, evitando reintentos y logs continuos. Backfill y processor usan advisory locks cooperativos, y los mensajes omiten rutas, storage keys, checksums, vectores y datos personales.
+
+`POST /api/v1/publications/search-by-image` exige sesión y Origin confiable, limita 10 consultas/usuario y 30/IP cada 15 minutos, una imagen y 8 MiB. Sharp valida bytes, dimensiones, píxeles, formato y página antes de inferencia. La respuesta es `private, no-store`, sin ETag; los fallos globales se reducen a `VISUAL_SEARCH_UNAVAILABLE` sin detalles ONNX.
+
 ## Seguridad frontend
 
 - `/auth/me` es la única fuente de verdad de identidad; no se usan JWT, `localStorage` ni `sessionStorage`.
@@ -127,6 +137,8 @@ Se aplican dos buckets de 15 minutos: 30 por usuario y 100 por IP, con `429 CONT
 El retorno tras login acepta exclusivamente rutas internas sanitizadas. Rechaza URLs absolutas, rutas `//`, esquemas arbitrarios y retornos a login/registro para evitar open redirects y bucles. La UI reconstruye enlaces de contacto desde valores validados con esquemas fijos (`https://wa.me`, `tel:` y `mailto:`); nunca representa una URI arbitraria recibida. Los parámetros con texto se codifican y la PII revelada se elimina de TanStack Query al ocultar, desmontar, cambiar de publicación o cerrar sesión.
 
 ## Logs y errores
+
+La búsqueda visual mantiene el buffer únicamente durante la request, valida Origin y sesión, limita tamaño/formato y aplica rate limiting por usuario e IP. No registra imagen, vector, checksum, score, path del modelo ni datos personales. Los fallos de carga del modelo se traducen a un 503 estable sin detalles ONNX/filesystem; el frontend usa mensajes allowlisted.
 
 Se usarán logs estructurados con identificadores de correlación y redacción de datos sensibles. No incluirán contraseñas, tokens, cookies, coordenadas exactas ni imágenes. Los clientes recibirán errores estables y no stack traces.
 

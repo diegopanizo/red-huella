@@ -1,5 +1,15 @@
 # Estrategia de testing
 
+## pgvector y embeddings visuales
+
+La suite PostgreSQL aplica `0005` solo a la URL segura `_test`. Comprueba extensión, lifecycle, constraints, `vector(512)`, checksum, cascade, unicidad, idempotencia, retry, carrera de checksum, allowlist y orden exacto por coseno con vectores sintéticos. Los unit tests validan conversión de `Float32Array`/`number[]`, longitud, finitud y norma sin modelo ni red.
+
+Bloque 2 prueba checksum canónico, idempotencia, cambio de contenido, retry FAILED, errores globales, PENDING transaccional en upload y selección DB sin READY/ARCHIVED. `npm run visual:integration` es opcional: sin modelo hace skip explícito; configurado genera una fixture en memoria, persiste READY en una transacción de test, verifica dimensión/norma y hace rollback.
+
+Bloque 3 prueba ciclos vacíos sin ruido, lote acotado y secuencial, continuidad tras fallos de item, bloqueo global de modelo, ausencia de overlap y lifecycle start/stop sin handles. La suite DB enfrenta dos consumidores sobre el mismo advisory lock, y el test de upload usa una inferencia que nunca resuelve para demostrar que la request no la invoca ni espera. El processor queda deshabilitado por defecto en tests.
+
+Bloque 4 prueba service/DTO y errores globales sin ONNX real; Supertest cubre autenticación, Origin, multipart, ausencia/multiplicidad/8 MiB, filtros, 429, 503, no-store y no persistencia. PostgreSQL prueba coseno exacto, orden, mejor imagen por publicación, READY/modelo/revisión, visibilidad, tipo, especie y límite mediante vectores sintéticos.
+
 ## Frontend funcional
 
 Vitest, React Testing Library y jsdom prueban render tras loading, card/placeholder, filtros en URL, empty state, redirección protegida, validación de registro y submit de login con `credentials: include`. Se prueban resultados observables, no snapshots.
@@ -113,6 +123,12 @@ El Bloque 3 añade unitarios para normalización de longitud, bounds estándar, 
 Playwright se añadirá en el Milestone 12 para recorridos críticos: identidad, publicar, buscar, proteger ubicación, favoritos y moderación cuando existan. Se ejecutará en un entorno aislado con datos sintéticos.
 
 ## Qué probar
+
+El Bloque 5 del Milestone 11 cubre multipart frontend, filtros opcionales, límite fijo, cookies, `AbortSignal` y errores tipados. Tests del hook verifican validación preventiva, preview, loading/resultado/error, retry, reset, revocación y respuestas obsoletas. React Testing Library cubre selector accesible, privacidad, filtros, `matchedImage`, ausencia del score numérico, empty state, 429/503 y navegación al detalle.
+
+El Bloque 6 ejecutó integración ONNX real y smoke HTTP autenticado con PostgreSQL real. Verificó cold/warm, filtros, dos búsquedas concurrentes, no persistencia y `upload → PENDING → READY`. La revisión visual en navegador no se pudo completar en el entorno del agente; no se sustituye por mocks y mantiene el milestone en curso.
+
+La calibración final usa nueve observaciones controladas sin versionar imágenes: dos exactas, tres duplicados locales detectados, dos reencodes, otra foto de la misma especie y la prueba manual con un animal distinto. No constituye un dataset de identidad ni permite Recall@K. El test frontend exige «Similitud visual» y «Foto visualmente similar», rechaza el copy anterior «Coincidencia visual» y mantiene el score fuera de la UI.
 
 - Comportamiento y reglas, no detalles internos.
 - Casos válidos, límites, datos malformados, estados vacíos y fallos de dependencias.

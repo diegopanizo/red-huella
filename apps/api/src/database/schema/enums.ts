@@ -17,6 +17,11 @@ export const publicationContactMethodValues = [
   'PHONE',
   'EMAIL',
 ] as const
+export const visualEmbeddingStatusValues = [
+  'PENDING',
+  'READY',
+  'FAILED',
+] as const
 
 export type UserRole = (typeof userRoleValues)[number]
 export type UserStatus = (typeof userStatusValues)[number]
@@ -27,6 +32,7 @@ export type PublicationType = (typeof publicationTypeValues)[number]
 export type PublicationStatus = (typeof publicationStatusValues)[number]
 export type PublicationContactMethodType =
   (typeof publicationContactMethodValues)[number]
+export type VisualEmbeddingStatus = (typeof visualEmbeddingStatusValues)[number]
 
 export const userRoleEnum = pgEnum('user_role', userRoleValues)
 export const userStatusEnum = pgEnum('user_status', userStatusValues)
@@ -44,4 +50,8 @@ export const publicationStatusEnum = pgEnum(
 export const publicationContactMethodEnum = pgEnum(
   'publication_contact_method',
   publicationContactMethodValues,
+)
+export const visualEmbeddingStatusEnum = pgEnum(
+  'visual_embedding_status',
+  visualEmbeddingStatusValues,
 )

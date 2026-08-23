@@ -5,6 +5,7 @@
 | Método | Ruta                                        | Acceso          | Descripción                                    |
 | ------ | ------------------------------------------- | --------------- | ---------------------------------------------- |
 | POST   | `/api/v1/publications`                      | sesión + Origin | Crea animal y publicación atómicamente; `201`  |
+| POST   | `/api/v1/publications/search-by-image`      | sesión + Origin | Recupera candidatos visualmente similares      |
 | GET    | `/api/v1/publications`                      | público         | Lista paginada y filtrada                      |
 | GET    | `/api/v1/publications/map`                  | público         | Publicaciones mínimas del viewport             |
 | GET    | `/api/v1/publications/mine`                 | sesión          | Lista todas las publicaciones propias          |
@@ -201,3 +202,13 @@ Se usan actualmente `200`, `201`, `204`, `400`, `401`, `403`, `404`, `409`, `429
 ## Versionado
 
 `v1` permite evolución incompatible explícita. Cambios compatibles se añadirán sin romper clientes. Antes de implementar cada área se documentarán schemas, ejemplos, estados, permisos, paginación e idempotencia.
+
+## Búsqueda visual por imagen
+
+El frontend consume este endpoint desde `/search-by-image` mediante `FormData`, sin establecer manualmente el boundary. La opción «Perdidos y encontrados» omite `targetType`; el límite inicial es 20. El cliente soporta cancelación con `AbortSignal`, usa `matchedImage` como imagen prominente y no muestra el score como probabilidad.
+
+El smoke real autenticado de cierre obtuvo `200` usando ONNX y PostgreSQL: alrededor de 305 ms cold y 31–35 ms warm en la máquina de desarrollo. Dos requests concurrentes finalizaron sin error. Son medidas orientativas de un dataset mínimo, no garantías de producción.
+
+`POST /api/v1/publications/search-by-image` requiere sesión, `Origin` permitido y `multipart/form-data`. Acepta exactamente un archivo `image` JPEG/PNG/WebP de hasta 8 MiB y los campos opcionales `targetType` (`LOST`, `FOUND`, `ADOPTION`), `species` (`DOG`, `CAT`, `OTHER`) y `limit` (1–50, default 20). Sin `targetType` busca LOST+FOUND; la versión actual es global y no acepta coordenadas.
+
+Devuelve `items` con publicación reducida, imagen principal, `matchedImage`, `publicLocation` permitida y `visualSimilarity`. No devuelve embedding, checksum, versión, storage key, ubicación exacta, contacto ni datos internos del autor. `visualSimilarity` es un score de candidatos CLIP, no porcentaje, probabilidad ni identidad. Responde 400 para multipart/filtros/imagen inválidos, 401 sin sesión, 403 con Origin no confiable, 429 por límite y 503 `VISUAL_SEARCH_UNAVAILABLE` cuando el modelo no está disponible. La respuesta usa `private, no-store` y no tiene ETag.

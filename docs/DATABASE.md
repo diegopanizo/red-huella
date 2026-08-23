@@ -188,6 +188,22 @@ npm run db:location:backfill -- --apply
 
 `npm run db:seed` inserta mediante `ON CONFLICT DO NOTHING` dos usuarios `USER` sin contraseña, tres animales y tres publicaciones. No crea imágenes ficticias ni incluye binarios demo. Es explícito, repetible y está bloqueado si `NODE_ENV=production`.
 
+## Embeddings visuales
+
+`0005_graceful_tomas.sql` habilita pgvector y crea `publication_image_embeddings`. Cada fila referencia una imagen con `ON DELETE/UPDATE CASCADE` y es única por `(publication_image_id, model_id, model_version)`. `embedding` es pgvector real `vector(512)`, nullable para PENDING/FAILED; no se representa como JSON, texto ni array PostgreSQL.
+
+El lifecycle exige READY con vector, `generated_at` y sin error; PENDING sin vector, fecha ni error; FAILED sin vector/fecha y con código. El checksum es SHA-256 lowercase de 64 caracteres, `attempt_count >= 0` y modelo/versión no pueden estar vacíos. No hay HNSW/IVFFlat: el MVP usará coseno exacto `<=>` dentro del mismo modelo/revisión.
+
+Antes del Bloque 2 se verificó `0005` aplicada en `red_huella` y `red_huella_test`, ambas con pgvector 0.8.5.
+
+El Bloque 2 no añade migraciones. Nuevas imágenes insertan su fila PENDING en la misma transacción. El selector de backfill pagina determinísticamente, omite publicaciones ARCHIVED y READY, e incluye FAILED solo por retry explícito. Archivar o bloquear un autor no borra embeddings existentes; futuras búsquedas públicas deberán excluirlos.
+
+El Bloque 3 tampoco añade migraciones. El processor automático selecciona exclusivamente filas PENDING; la inclusión de imágenes históricas sin lifecycle queda reservada al backfill administrativo. Processor y backfill coordinan cada imagen mediante `pg_try_advisory_lock(hashtextextended(image_id, 0))` sobre una conexión dedicada durante el procesamiento. Solo los consumidores que respetan este protocolo quedan coordinados; el lifecycle durable continúa siendo PENDING/READY/FAILED y la escritura READY sigue condicionada al checksum para resolver carreras STALE.
+
+El Bloque 4 tampoco añade migraciones ni índices ANN. La búsqueda usa `<=>` exclusivamente sobre READY del modelo/revisión activos, calcula `row_number()` por publicación y conserva la imagen de menor distancia. Los joins exigen publicación y autor ACTIVE; no se cargan embeddings en Node.
+
+El cierre verificó `0005` en `red_huella` y `red_huella_test`, PostgreSQL 17.11 y pgvector 0.8.5. Un smoke controlado confirmó `upload → PENDING → READY` y que las búsquedas no alteran los conteos de publicaciones, imágenes o embeddings. `EXPLAIN ANALYZE` sobre cinco embeddings mostró scan exacto/secuencial y aproximadamente 0,8 ms de ejecución; no justifica ANN.
+
 ## Desarrollo y tests
 
 La aplicación consume exclusivamente `DATABASE_URL`, ya apunte a Windows, Docker o cloud. Compose ofrece PostgreSQL 17 como entorno local reproducible opcional en `localhost:5434` (`5432` interno); sus credenciales son development-only. `DATABASE_TEST_URL` debe ser distinta, terminar en `_test` y ejecutarse con `NODE_ENV=test`; los tests eliminan filas en orden de dependencias, pero nunca ejecutan `DROP` o `TRUNCATE`.
@@ -196,4 +212,4 @@ La aplicación consume exclusivamente `DATABASE_URL`, ya apunte a Windows, Docke
 
 - Retirada de `latitude`/`longitude` legacy mediante una migración posterior y revisada, nunca modificando `0003`.
 - `favorites`, `reports`, `shelters` y `matches`: milestones posteriores.
-- pgvector y embeddings: Milestone 14, condicionado a evaluación técnica y de privacidad.
+- Generación asíncrona, backfill y búsqueda visual: bloques posteriores del Milestone 11, condicionados a evaluación técnica y de privacidad.

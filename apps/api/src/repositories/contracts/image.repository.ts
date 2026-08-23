@@ -17,6 +17,11 @@ export interface NewImageMetadata {
   thumbnailHeight: number
   thumbnailByteSize: number
   thumbnailChecksumSha256: string
+  pendingEmbedding: {
+    modelId: string
+    modelVersion: string
+    imageChecksum: string
+  }
 }
 
 export type ImageMutationFailure =

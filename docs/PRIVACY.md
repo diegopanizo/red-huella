@@ -1,5 +1,15 @@
 # Privacidad
 
+## Embeddings visuales
+
+Son datos derivados internos asociados a imagen, modelo, versión y checksum. No aparecen en publicaciones, listados, `/mine`, `/manage`, mapa, contacto, logs ni errores, y los repositories públicos no hacen joins a su tabla. Una futura imagen de consulta será temporal y no persistida. CLIP solo podrá proponer candidatos, nunca identificación individual confirmada.
+
+El backfill lee exclusivamente la variante normalizada ya almacenada y no crea copias adicionales. Su salida muestra conteos y tiempos agregados, nunca vector, bytes, storage key, owner o PII.
+
+El processor automático aplica la misma minimización. Sus logs de lote contienen solo conteos y duración; un error puede incluir el código allowlisted y el identificador interno de imagen, pero nunca embedding, checksum, storage key, ruta, bytes, owner ni metadata de la publicación.
+
+La imagen enviada a `search-by-image` solo vive en un buffer acotado durante la request. No entra en ImageStorage, publication_images, lifecycle ni logs. El DTO puede devolver exclusivamente `publicLocation`; la consulta no selecciona ni utiliza `exact_location`. La búsqueda es recuperación de publicaciones visualmente similares, no identificación biométrica ni certeza sobre un animal.
+
 ## Ubicación en publicaciones
 
 La API pública devuelve exclusivamente una ubicación aproximada persistida. El punto exacto de LOST/FOUND queda restringido al propietario autenticado y ADOPTION no almacena domicilio exacto. Las coordenadas no se escriben en logs.
@@ -71,6 +81,10 @@ El Bloque 5 mantiene la PII ausente del HTML y de la red hasta la acción explí
 Los valores se guardan temporalmente en texto normal porque deben ser recuperables y el proyecto no dispone de gestión externa de claves. Una filtración de base o backup podría exponerlos. Antes de producción se revisarán cifrado de backups, permisos, retención y envelope encryption de aplicación. Los valores no se indexan ni deben aparecer en logs, métricas, errores o caches persistentes del navegador.
 
 ## Minimización y finalidad
+
+La búsqueda visual frontend conserva la foto seleccionada únicamente como `File` y object URL en memoria. Libera la URL al cambiar foto, resetear o desmontar y no escribe archivo, filtros, resultados o score en Web Storage, IndexedDB ni la URL. La interfaz aclara que la similitud ofrece candidatos y no confirma identidad; el score numérico no se presenta al usuario.
+
+El smoke de cierre comparó conteos antes y después y confirmó que la query no crea publicaciones, imágenes ni embeddings. El DTO y SQL no devuelven ubicación exacta, checksum, vector, modelo, storage key, autor interno o contacto. Los datos sintéticos creados para validar lifecycle fueron eliminados después de la prueba.
 
 Cada campo deberá justificar su necesidad. Matching y analítica reutilizarán datos solo de acuerdo con una finalidad informada. Los embeddings futuros son datos derivados vinculables a una imagen y heredarán sus reglas de acceso y eliminación.
 

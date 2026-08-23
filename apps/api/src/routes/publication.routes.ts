@@ -4,16 +4,22 @@ import { PublicationController } from '../controllers/publication.controller.js'
 import { ContactSettingsController } from '../controllers/contact-settings.controller.js'
 import { ContactController } from '../controllers/contact.controller.js'
 import { PublicationImageController } from '../controllers/image.controller.js'
+import { VisualSearchController } from '../controllers/visual-search.controller.js'
 import { env } from '../config/index.js'
 import { db } from '../database/client.js'
 import type { ImageProcessor, ImageStorage } from '../images/image-storage.js'
 import { LocalImageStorage } from '../images/local-image-storage.js'
 import { SharpImageProcessor } from '../images/sharp-image-processor.js'
 import { parseImageUpload } from '../middleware/image-upload.js'
+import { parseVisualSearchUpload } from '../middleware/visual-search-upload.js'
 import { imageUploadRateLimit } from '../middleware/image-upload-rate-limit.js'
 import { createContactRateLimiters } from '../middleware/contact-rate-limit.js'
 import { privateNoStore } from '../middleware/private-no-store.js'
 import { createMapRateLimit } from '../middleware/map-rate-limit.js'
+import {
+  createVisualSearchRateLimiters,
+  type VisualSearchRateLimitOverrides,
+} from '../middleware/visual-search-rate-limit.js'
 import { requireAuth } from '../middleware/require-auth.js'
 import { requireTrustedOrigin } from '../middleware/trusted-origin.js'
 import type { SessionRepository } from '../repositories/contracts/session.repository.js'
@@ -21,11 +27,13 @@ import type { UserRepository } from '../repositories/contracts/user.repository.j
 import type { PublicationRepository } from '../repositories/contracts/publication.repository.js'
 import type { PublicationContactRepository } from '../repositories/contracts/publication-contact.repository.js'
 import type { ImageRepository } from '../repositories/contracts/image.repository.js'
+import type { VisualSearchRepository } from '../visual-search/visual-search-api.js'
 import { DrizzleImageRepository } from '../repositories/drizzle-image.repository.js'
 import { DrizzlePublicationRepository } from '../repositories/drizzle-publication.repository.js'
 import { DrizzlePublicationContactRepository } from '../repositories/drizzle-publication-contact.repository.js'
 import { DrizzleSessionRepository } from '../repositories/drizzle-session.repository.js'
 import { DrizzleUserRepository } from '../repositories/drizzle-user.repository.js'
+import { DrizzlePublicationImageEmbeddingRepository } from '../repositories/drizzle-publication-image-embedding.repository.js'
 import { SessionAuthenticationService } from '../services/session-authentication.service.js'
 import {
   ChangePublicationStatusService,
@@ -47,6 +55,8 @@ import {
   ReorderPublicationImagesService,
   UploadPublicationImagesService,
 } from '../services/image.services.js'
+import { SearchPublicationsByImageService } from '../services/visual-search.service.js'
+import { VisualEmbeddingGenerator } from '../visual-search/visual-embedding.js'
 
 export interface PublicationModuleDependencies {
   publications?: PublicationRepository
@@ -56,6 +66,12 @@ export interface PublicationModuleDependencies {
   imageProcessor?: ImageProcessor
   imageStorage?: ImageStorage
   contacts?: PublicationContactRepository
+  visualSearch?: VisualSearchRepository
+  visualEmbeddingGenerator?: Pick<
+    VisualEmbeddingGenerator,
+    'generateImageEmbeddingWithMetrics'
+  >
+  visualSearchRateLimits?: VisualSearchRateLimitOverrides
 }
 
 export function createPublicationRouter(
@@ -95,6 +111,17 @@ export function createPublicationRouter(
     new GetPublicationContactService(contacts),
   )
   const contactRateLimiters = createContactRateLimiters()
+  const visualSearchRateLimiters = createVisualSearchRateLimiters(
+    dependencies.visualSearchRateLimits,
+  )
+  const visualSearchController = new VisualSearchController(
+    new SearchPublicationsByImageService(
+      dependencies.visualEmbeddingGenerator ??
+        new VisualEmbeddingGenerator(env.VISUAL_MODEL_PATH),
+      dependencies.visualSearch ??
+        new DrizzlePublicationImageEmbeddingRepository(db),
+    ),
+  )
   const imageController = new PublicationImageController(
     new UploadPublicationImagesService(
       publications,
@@ -108,6 +135,16 @@ export function createPublicationRouter(
   const router = Router()
   router.get('/', controller.list)
   router.get('/map', createMapRateLimit(), controller.map)
+  router.post(
+    '/search-by-image',
+    requireTrustedOrigin,
+    auth,
+    privateNoStore,
+    visualSearchRateLimiters.byUser,
+    visualSearchRateLimiters.byIp,
+    parseVisualSearchUpload,
+    visualSearchController.search,
+  )
   router.get('/mine', auth, controller.mine)
   router.get('/:id/manage', auth, controller.manage)
   router.get('/:id/contact-settings', auth, contactSettingsController.get)

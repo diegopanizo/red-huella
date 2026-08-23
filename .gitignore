@@ -11,6 +11,7 @@ test-results/
 # Local image storage (Milestone 7)
 .data/uploads/
 .data/tmp/
+.data/models/
 
 # Environment files (keep the documented template)
 .env

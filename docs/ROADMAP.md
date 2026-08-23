@@ -60,29 +60,45 @@ El refinamiento visual transversal iniciado en 2026 define tokens, jerarquía de
 
 > Cambio de orden aprobado al iniciar el Milestone 10: este número estaba reservado anteriormente a Favoritos. El mapa global se prioriza como continuación de la base PostGIS; Favoritos y los milestones posteriores se desplazan sin afirmar que hayan sido implementados.
 
-## Milestone 11 — Favoritos
+## Milestone 11 — Búsqueda visual (completado)
+
+El Bloque 0.1 valida de forma aislada embeddings CLIP ViT-B/32 de 512 dimensiones con Sharp y ONNX Runtime Node en CPU. El resultado provisional es Node/ONNX viable con reservas: no hay todavía PostgreSQL, pgvector, API, frontend ni arquitectura final, y la eficacia debe evaluarse con un dataset representativo antes de diseñar producto.
+
+El Bloque 1 incorpora pgvector 0.8.5, `vector(512)`, lifecycle versionado por imagen/checksum y repository interno. Generación, backfill, worker, API de búsqueda, ranking y frontend permanecen pendientes; Milestone 11 continúa **IN PROGRESS**.
+
+El Bloque 2 incorpora checksum canónico, pipeline interno, PENDING no bloqueante para uploads y backfill manual idempotente/secuencial. API de búsqueda, ranking y frontend siguen pendientes.
+
+El Bloque 3 incorpora procesamiento automático opt-in mediante polling no solapado, lotes secuenciales, lifecycle de startup/shutdown, claim cooperativo con advisory locks y CLI de un solo ciclo. Mantiene el upload desacoplado y no incorpora API de búsqueda, ranking ni frontend; Milestone 11 continúa **IN PROGRESS**.
+
+El Bloque 4 incorpora el endpoint backend autenticado de búsqueda por imagen, multipart efímero, rate limiting, ranking coseno exacto y un resultado reducido por publicación. El frontend, filtros geográficos, evaluación de calidad e índices ANN permanecen pendientes; Milestone 11 continúa **IN PROGRESS**.
+
+El Bloque 5 incorpora la ruta frontend autenticada `/search-by-image`, selección y preview efímeros, filtros simples, cancelación de solicitudes y cards centradas en la imagen coincidente. La búsqueda geográfica combinada, evaluación de calidad e índices ANN permanecen pendientes; Milestone 11 continúa **IN PROGRESS**.
+
+El Bloque 6 valida API autenticada, multipart, ONNX real, pgvector, lifecycle PENDING→READY, filtros, concurrencia básica y consumo de memoria. El smoke visual completo en navegador no pudo ejecutarse en el entorno del agente y el conjunto de calibración no permite Recall@K; por ello el milestone permanece **IN PROGRESS** y sin threshold duro.
+
+La validación manual posterior confirmó el recorrido real de navegador y un gato distinto con score `0,885872`. La calibración final de nueve casos mostró solapamiento incompatible con un threshold de identidad, consolidó el copy «Similitud visual» y mantuvo top-K. Con tests, integración, smoke y auditoría aprobados, Milestone 11 queda **COMPLETE**; evaluación de calidad con dataset representativo y cualquier ANN son mejoras futuras basadas en evidencia.
+
+> Cambio de orden aprobado al iniciar el Milestone 11: este número estaba reservado a Favoritos y la búsqueda visual figuraba más adelante. El spike se adelanta para resolver pronto la viabilidad técnica; Favoritos y los objetivos intermedios se desplazan sin afirmar que estén implementados.
+
+## Milestone 12 — Favoritos
 
 Persistencia, API y UI de favoritos con autorización.
 
-## Milestone 12 — Roles y moderación
+## Milestone 13 — Roles y moderación
 
 Protectoras, reportes, roles y operaciones administrativas auditables.
 
-## Milestone 13 — Matching tradicional
+## Milestone 14 — Matching tradicional
 
 Servicio independiente, score explicable con especie, raza, color, tamaño, sexo, distancia y fecha, más evaluación y tests.
 
-## Milestone 14 — Testing E2E
+## Milestone 15 — Testing E2E
 
 Playwright, datos aislados y recorridos críticos automatizados.
 
-## Milestone 15 — Auditoría de seguridad
+## Milestone 16 — Auditoría de seguridad
 
 Threat model actualizado, revisión OWASP, dependencias, permisos, configuración y pruebas de abuso.
-
-## Milestone 16 — Matching visual
-
-Evaluación ética/técnica, proveedor de embeddings desacoplado, pgvector, métricas y comunicación de incertidumbre.
 
 ## Milestone 17 — Deployment
 

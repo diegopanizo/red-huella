@@ -9,6 +9,8 @@ import type {
   PublicationStatus,
   PublicationType,
   User,
+  VisualSearchFilters,
+  VisualSearchResponse,
 } from '../types'
 
 export interface MapPublicationFilters {
@@ -164,4 +166,20 @@ export const api = {
       `/publications/${publicationId}/images/order`,
       { method: 'PATCH', body: JSON.stringify({ imageIds }) },
     ),
+  searchPublicationsByImage: (
+    image: File,
+    filters: VisualSearchFilters,
+    signal?: AbortSignal,
+  ) => {
+    const body = new FormData()
+    body.append('image', image)
+    if (filters.targetType) body.append('targetType', filters.targetType)
+    if (filters.species) body.append('species', filters.species)
+    body.append('limit', String(filters.limit))
+    return requestJson<VisualSearchResponse>('/publications/search-by-image', {
+      method: 'POST',
+      body,
+      ...(signal ? { signal } : {}),
+    })
+  },
 }

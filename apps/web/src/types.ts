@@ -88,3 +88,23 @@ export type MapPublicationsResponse = {
   truncated: boolean
   limit: 500
 }
+
+export type VisualSearchFilters = {
+  targetType?: PublicationType
+  species?: Publication['animal']['species']
+  limit: number
+}
+export type VisualSearchResult = {
+  publication: {
+    id: string
+    type: PublicationType
+    title: string
+    eventDate: string
+    animal: Pick<Publication['animal'], 'name' | 'species' | 'breed'>
+    primaryImage: Pick<PublicationImage, 'id' | 'thumbnailUrl'> | null
+    publicLocation: PublicLocation | null
+  }
+  matchedImage: Pick<PublicationImage, 'id' | 'thumbnailUrl'>
+  visualSimilarity: number
+}
+export type VisualSearchResponse = { items: VisualSearchResult[] }

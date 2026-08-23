@@ -20,6 +20,11 @@ import type {
   ProcessedImage,
 } from '../images/image-storage.js'
 import { logger } from '../logging/logger.js'
+import { computeImageChecksum } from '../visual-search/image-checksum.js'
+import {
+  VISUAL_MODEL_ID,
+  VISUAL_MODEL_VERSION,
+} from '../visual-search/visual-model.js'
 import type { ImageRepository } from '../repositories/contracts/image.repository.js'
 import type { PublicationRepository } from '../repositories/contracts/publication.repository.js'
 
@@ -65,7 +70,7 @@ export class UploadPublicationImagesService {
           data: processed.thumbnail.data,
         })
         storedKeys.push(keys.thumbnail)
-        metadata.push(toImageMetadata(keys.imageId, keys, processed))
+        metadata.push(await toImageMetadata(keys.imageId, keys, processed))
       }
     } catch (error: unknown) {
       await compensateStorage(this.storage, storedKeys, publicationId)
@@ -209,7 +214,7 @@ export class ProcessStorageDeletionJobsService {
   }
 }
 
-function toImageMetadata(
+async function toImageMetadata(
   id: string,
   keys: { display: string; thumbnail: string },
   image: ProcessedImage,
@@ -227,6 +232,13 @@ function toImageMetadata(
     thumbnailHeight: image.thumbnail.height,
     thumbnailByteSize: image.thumbnail.byteSize,
     thumbnailChecksumSha256: image.thumbnail.checksumSha256,
+    pendingEmbedding: {
+      modelId: VISUAL_MODEL_ID,
+      modelVersion: VISUAL_MODEL_VERSION,
+      imageChecksum: await computeImageChecksum(
+        Buffer.from(image.display.data),
+      ),
+    },
   }
 }
 

@@ -32,6 +32,7 @@ import {
   PublicationGallery,
 } from './features/images/PublicationImages'
 import { usePendingImages } from './features/images/usePendingImages'
+import { VisualSearchPage } from './features/visual-search/VisualSearchPage'
 import { api, ApiError, resolveApiAssetUrl } from './services/api'
 import type {
   ContactMethodType,
@@ -134,6 +135,7 @@ function Layout() {
         </Link>
         <nav aria-label="Principal">
           <Link to="/">Explorar</Link>
+          <Link to="/search-by-image">Buscar por foto</Link>
           {auth.authenticated && (
             <>
               <Link to="/my-publications">Mis publicaciones</Link>
@@ -182,7 +184,10 @@ function Protected() {
   return auth.authenticated ? (
     <Outlet />
   ) : (
-    <Navigate to="/login" state={{ from: location.pathname }} replace />
+    <Navigate
+      to={`/login?returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`}
+      replace
+    />
   )
 }
 
@@ -1445,6 +1450,7 @@ export default function App() {
         <Route path="register" element={<AuthPage mode="register" />} />
         <Route path="publications/:id" element={<Detail />} />
         <Route element={<Protected />}>
+          <Route path="search-by-image" element={<VisualSearchPage />} />
           <Route path="publications/new" element={<PublicationForm />} />
           <Route
             path="publications/:id/edit"

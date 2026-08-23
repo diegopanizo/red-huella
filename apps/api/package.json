@@ -19,7 +19,11 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx src/database/seed.ts",
     "db:postgis:preflight": "tsx src/database/postgis-preflight.ts",
-    "db:location:backfill": "tsx src/database/location-backfill.ts"
+    "db:location:backfill": "tsx src/database/location-backfill.ts",
+    "visual:spike": "tsx src/visual-search/spike.ts",
+    "visual:backfill": "tsx src/visual-search/backfill.ts",
+    "visual:integration": "tsx src/visual-search/integration.ts",
+    "visual:process-pending": "tsx src/visual-search/process-pending.ts"
   },
   "keywords": [],
   "author": "",
@@ -34,6 +38,7 @@
     "express-rate-limit": "^8.6.2",
     "helmet": "^8.3.0",
     "multer": "^2.2.0",
+    "onnxruntime-node": "1.21.1",
     "pg": "^8.16.3",
     "pino": "^10.3.1",
     "sharp": "^0.35.3",

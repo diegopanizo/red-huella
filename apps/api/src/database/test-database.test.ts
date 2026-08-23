@@ -12,6 +12,10 @@ const safeEnvironment: Environment = {
   LOG_LEVEL: 'silent',
   IMAGE_STORAGE_DRIVER: 'local',
   IMAGE_STORAGE_LOCAL_ROOT: 'C:\\red-huella-test-images',
+  VISUAL_MODEL_PATH: undefined,
+  VISUAL_EMBEDDING_PROCESSOR_ENABLED: false,
+  VISUAL_EMBEDDING_POLL_INTERVAL_MS: 30_000,
+  VISUAL_EMBEDDING_BATCH_SIZE: 5,
 }
 
 describe('assertSafeTestDatabaseUrl', () => {

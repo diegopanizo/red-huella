@@ -1,6 +1,7 @@
 export * from './animals.js'
 export * from './enums.js'
 export * from './publication-images.js'
+export * from './publication-image-embeddings.js'
 export * from './publication-contact-methods.js'
 export * from './publications.js'
 export * from './sessions.js'
