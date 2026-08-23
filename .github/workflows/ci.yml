@@ -43,20 +43,6 @@ jobs:
   database-integration:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: red_huella_test
-          POSTGRES_USER: red_huella_test
-          POSTGRES_PASSWORD: red_huella_test_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U red_huella_test -d red_huella_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
     env:
       NODE_ENV: test
       PORT: 3000
@@ -67,6 +53,46 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Build PostgreSQL integration image
+        run: >-
+          docker build
+          --tag red-huella-ci-postgres:pg17
+          --file docker/ci-postgres/Dockerfile
+          .
+
+      - name: Start PostgreSQL integration container
+        run: >-
+          docker run --detach
+          --name red-huella-ci-postgres
+          --publish 5432:5432
+          --env POSTGRES_DB=red_huella_test
+          --env POSTGRES_USER=red_huella_test
+          --env POSTGRES_PASSWORD=red_huella_test_ci
+          red-huella-ci-postgres:pg17
+
+      - name: Wait for PostgreSQL
+        shell: bash
+        run: |
+          for attempt in {1..20}; do
+            if docker exec red-huella-ci-postgres pg_isready \
+              --username red_huella_test \
+              --dbname red_huella_test; then
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs red-huella-ci-postgres
+          exit 1
+
+      - name: Create placeholder database
+        run: >-
+          docker exec red-huella-ci-postgres
+          createdb
+          --username red_huella_test
+          --owner red_huella_test
+          red_huella_placeholder
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
