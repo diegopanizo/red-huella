@@ -118,14 +118,15 @@ Se incorporaron seis recorridos Playwright sobre Chromium: autenticación y sesi
 
 No exige alta disponibilidad ni infraestructura empresarial.
 
-Se incorporó un deployment Docker Compose reproducible con PostgreSQL 17/PostGIS/pgvector, migración one-shot, API Node 24 no root, frontend estático y reverse proxy Nginx bajo un solo origen. PostgreSQL/API permanecen internos; imágenes usan volumen persistente y el modelo ONNX se monta read-only tras provisioning y checksum. El runbook cubre variables, HTTPS externo, startup, health/readiness, logs, backup, restore, update, rollback y troubleshooting. Docker no estaba disponible en el entorno Windows de implementación, por lo que build/start requieren la verificación operativa documentada en un host con Docker; la configuración y el resto del proyecto se validaron estáticamente.
+Se incorporó un deployment Docker Compose reproducible con PostgreSQL 17/PostGIS/pgvector, migración one-shot, API Node 24 no root, frontend estático y reverse proxy Nginx bajo un solo origen. PostgreSQL/API permanecen internos; imágenes usan volumen persistente y el modelo ONNX se monta read-only tras provisioning y checksum. El runbook cubre variables, HTTPS externo, startup, health/readiness, logs, backup, restore, update, rollback y troubleshooting. GitHub Actions valida configuración, build, startup, healthchecks y smoke HTTP del stack.
 
-## Milestone 15 — Preparación final TFM
+## Milestone 15 — Cierre final del repositorio (completado)
 
-- Completar el README definitivo: descripción, arquitectura, tecnologías, instalación, configuración, ejecución y tests.
-- Preparar capturas, URL pública y credenciales demo cuando correspondan.
-- Crear slides y vídeo/demo.
-- Consolidar checklist final, limitaciones conocidas y trabajo futuro.
+- README definitivo con descripción, arquitectura, tecnologías, instalación, configuración, ejecución, tests, deployment y limitaciones.
+- Documentación consolidada y consistente con M0–M15.
+- Checklist técnico final y procedimiento para crear un usuario de demostración sin credenciales inventadas.
+- CI verde: calidad, integración PostgreSQL, E2E y validación de contenedores de producción.
+- Limitaciones conocidas y trabajo futuro separados del alcance obligatorio.
 
 ## Trabajo futuro
 

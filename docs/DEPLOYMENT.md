@@ -104,6 +104,8 @@ En la primera inicialización, `10-app-role.sh` crea `red_huella_app` y configur
 
 ## Verificación
 
+GitHub Actions ejecuta `docker compose config`, construye las imágenes, arranca el stack y verifica PostgreSQL healthy, migración exit 0, API healthy y respuestas HTTP 200 de SPA y health a través de Nginx. La operación sobre un host real sigue requiriendo las comprobaciones y secretos propios del entorno.
+
 ```bash
 docker compose --env-file .env.production -f compose.prod.yml ps
 curl --fail http://127.0.0.1:${WEB_HTTP_PORT:-8080}/

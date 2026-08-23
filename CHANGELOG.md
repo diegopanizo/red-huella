@@ -1,5 +1,12 @@
 # Changelog
 
+## Milestone 15 — completado
+
+- Consolidado el README final con alcance, arquitectura, instalación, ejecución, testing, búsqueda visual, deployment y limitaciones reales.
+- Alineada la documentación histórica con el estado M0–M15 y la validación completa de CI y contenedores de producción.
+- Añadido el checklist técnico de entrega sin exigir credenciales inventadas ni artefactos audiovisuales.
+- Documentados explícitamente los límites de similitud visual, infraestructura single-instance, PII, modelo ONNX, storage local y capacidades futuras.
+
 ## Milestone 14 — completado
 
 - Añadidas imágenes multi-stage de producción para API Node 24 y frontend Vite/Nginx, sin Alpine ni secretos incorporados.
@@ -26,12 +33,12 @@
 - Añadidos `LocationPicker`, fallback manual, geolocalización voluntaria, `PublicLocationMap` y búsqueda «Buscar cerca de mí» con radios configurables.
 - Aplicados y verificados el backfill legacy idempotente y la limpieza de `latitude`/`longitude` migradas; las columnas se conservan temporalmente para retirada en una migración futura.
 
-## Milestone 7 — en curso
+## Milestone 7 — completado
 
 - Añadidos almacenamiento local desacoplado, normalización WebP segura, metadata por variante y outbox específica de borrado.
 - Implementados upload multipart, ownership, locking de capacidad, borrado/reordenación transaccional y entrega por stream con ETag.
 - Añadidos selector y previews locales, fallo parcial recuperable, galería responsive, thumbnails en cards y gestión accesible de imágenes propias.
-- El milestone permanece abierto hasta su bloque de cierre y verificación final.
+- Cerrado tras su revisión de documentación, seguridad, consistencia, tests y experiencia frontend.
 
 ## Milestone 6
 

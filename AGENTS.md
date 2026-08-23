@@ -1,6 +1,6 @@
 # AGENTS.md — Guía de desarrollo de Red Huella
 
-Estado: Milestone 8 implementado y cerrado; cualquier milestone posterior requiere alcance aprobado. El frontend consume la API mediante cookies HttpOnly y el backend conserva toda autoridad de autenticación y ownership.
+Estado: Milestones 0–15 implementados y cerrados; cualquier trabajo posterior requiere alcance aprobado. El frontend consume la API mediante cookies HttpOnly y el backend conserva toda autoridad de autenticación y ownership.
 
 Este archivo contiene reglas obligatorias para cualquier persona o agente que modifique el repositorio. Antes de cambiar código, se debe inspeccionar el estado real y respetar el alcance del milestone activo.
 
@@ -62,7 +62,7 @@ Toda funcionalidad geográfica pública debe usar exclusivamente `public_locatio
 - Cada feature debe incorporar tests proporcionales a su riesgo cuando se implemente.
 - Frontend: Vitest y React Testing Library; probar comportamiento observable y accesibilidad.
 - Backend: Vitest y Supertest; probar reglas, validación, autorización y contratos HTTP.
-- E2E posterior: Playwright para recorridos críticos.
+- E2E: Playwright para recorridos críticos.
 - No crear tests triviales o ficticios para aumentar métricas.
 - Un fallo no se silencia ni se convierte en éxito artificialmente.
 

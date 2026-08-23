@@ -147,7 +147,7 @@ Playwright arranca API y Vite en `127.0.0.1:3100` y `127.0.0.1:5174`, sin reutil
 
 El Bloque 5 del Milestone 11 cubre multipart frontend, filtros opcionales, límite fijo, cookies, `AbortSignal` y errores tipados. Tests del hook verifican validación preventiva, preview, loading/resultado/error, retry, reset, revocación y respuestas obsoletas. React Testing Library cubre selector accesible, privacidad, filtros, `matchedImage`, ausencia del score numérico, empty state, 429/503 y navegación al detalle.
 
-El Bloque 6 ejecutó integración ONNX real y smoke HTTP autenticado con PostgreSQL real. Verificó cold/warm, filtros, dos búsquedas concurrentes, no persistencia y `upload → PENDING → READY`. La revisión visual en navegador no se pudo completar en el entorno del agente; no se sustituye por mocks y mantiene el milestone en curso.
+El Bloque 6 ejecutó integración ONNX real y smoke HTTP autenticado con PostgreSQL real. Verificó cold/warm, filtros, dos búsquedas concurrentes, no persistencia y `upload → PENDING → READY`. La revisión manual posterior completó el recorrido de navegador; la calibración final mantuvo top-K y descartó interpretar el resultado como identidad.
 
 La calibración final usa nueve observaciones controladas sin versionar imágenes: dos exactas, tres duplicados locales detectados, dos reencodes, otra foto de la misma especie y la prueba manual con un animal distinto. No constituye un dataset de identidad ni permite Recall@K. El test frontend exige «Similitud visual» y «Foto visualmente similar», rechaza el copy anterior «Coincidencia visual» y mantiene el score fuera de la UI.
 

@@ -1,187 +1,136 @@
 # Red Huella
 
-## Authentication
+Red Huella es una aplicación web para publicar y localizar animales perdidos, encontrados o en adopción. Centraliza avisos dispersos, permite explorarlos por criterios y zona aproximada y ofrece contacto protegido entre usuarios.
 
-La API usa sesiones opacas revocables persistidas en PostgreSQL. El navegador recibe únicamente una cookie `HttpOnly`; no se guarda autenticación en `localStorage` ni `sessionStorage`. Registro, login, logout y usuario actual están disponibles bajo `/api/v1/auth`.
+Es un Trabajo de Fin de Máster con el núcleo funcional completo. Los milestones M0–M15 están cerrados, la integración continua valida código, PostgreSQL y recorridos críticos, y el deployment de referencia se construye y arranca de forma reproducible. Las limitaciones operativas y de producto permanecen documentadas explícitamente.
 
-## Publications backend
+## Funcionalidades principales
 
-La aplicación permite crear, consultar, listar y editar publicaciones `LOST`, `FOUND` y `ADOPTION`, cambiar su estado y gestionar hasta seis imágenes normalizadas por publicación. Ownership, estados, paginación y filtros se aplican en servidor.
+- Registro, login y logout mediante sesiones opacas revocables en cookie HttpOnly.
+- Publicaciones `LOST`, `FOUND` y `ADOPTION`, ownership, estados y filtros.
+- Hasta seis imágenes por publicación, normalizadas a WebP y sin metadatos.
+- Separación entre ubicación exacta privada y zona pública aproximada.
+- Búsqueda por cercanía y mapa global con clustering, lista sincronizada y experiencia móvil.
+- Contacto por WhatsApp, teléfono o email, configurado por publicación y revelado bajo demanda a usuarios autenticados.
+- Búsqueda por similitud visual con CLIP, ONNX Runtime y pgvector.
+- Interfaz responsive y accesible para explorar, crear y gestionar publicaciones.
 
-## Frontend funcional
+La búsqueda visual propone imágenes parecidas: no identifica animales ni expresa una probabilidad de identidad.
 
-La web incluye rutas públicas de exploración, detalle, login y registro, además de creación, edición y publicaciones propias protegidas por estado de sesión. Los owners pueden configurar WhatsApp, teléfono o email por publicación; en el detalle `ACTIVE`, usuarios autenticados pueden revelarlos únicamente mediante click explícito. Configura `VITE_API_URL` desde `apps/web/.env.example`; es una URL pública, nunca un secreto. La sesión procede de `/auth/me` y la cookie HttpOnly no se lee ni almacena desde JavaScript.
+## Arquitectura
 
-## Descripción general
+El monorepo usa npm workspaces y separa frontend y backend:
 
-Red Huella es un Trabajo de Fin de Máster en desarrollo. Propone una plataforma web geolocalizada para ayudar a particulares y protectoras a publicar y localizar animales perdidos, encontrados o en adopción. El objetivo es reducir la dispersión de avisos, facilitar búsquedas relevantes y construir un proyecto Full Stack mantenible, seguro y verificable que también pueda servir como portfolio profesional.
+```text
+Browser → React/Vite → REST /api/v1 → Express → servicios → repositories → PostgreSQL
+                                                ↘ Sharp / ONNX
+```
 
-El público previsto incluye personas responsables de animales, ciudadanía que encuentre un animal, adoptantes, protectoras y, en fases posteriores, personal de moderación.
+- Frontend: `UI → hooks/application → services → API`.
+- Backend: `Route → Controller → Service/Use Case → Repository → Database`.
+- PostgreSQL 17 es la fuente de verdad; PostGIS soporta consultas espaciales y pgvector la similitud visual.
+- Las imágenes viven fuera de PostgreSQL mediante una abstracción de almacenamiento.
+- En producción, Nginx sirve la SPA y actúa como reverse proxy bajo un único origen.
 
-## Estado del proyecto
-
-**En desarrollo — Milestones 0–14 completados.**
-
-La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía, mapas aproximados, mapa global, contacto autenticado y búsqueda visual por una foto efímera. Esta última recupera candidatos por similitud mediante CLIP y pgvector; no identifica animales ni expresa una probabilidad. La API Express usa PostgreSQL 17 + PostGIS + pgvector, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
+El diseño completo está en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) y las decisiones en [docs/DECISIONS.md](docs/DECISIONS.md).
 
 ## Stack tecnológico
 
-| Área            | Estado        | Tecnología                                                          |
-| --------------- | ------------- | ------------------------------------------------------------------- |
-| Frontend        | Funcional     | React 19, Vite, TypeScript, Leaflet y React-Leaflet                 |
-| Backend         | Base técnica  | Node.js, Express, TypeScript, Helmet, CORS y Zod                    |
-| Base de datos   | Geoespacial   | PostgreSQL 17, PostGIS 3.6, `pg`, Drizzle, migrations y seed        |
-| Matching visual | En validación | CLIP ViT-B/32, ONNX Runtime Node, pgvector y búsqueda coseno exacta |
-| Testing         | Validado      | Vitest, React Testing Library, Supertest y Playwright               |
-| Infraestructura | Reproducible  | GitHub Actions y Docker Compose de producción                       |
+| Área            | Tecnología                                                                           |
+| --------------- | ------------------------------------------------------------------------------------ |
+| Frontend        | React 19, Vite, TypeScript, TanStack Query, React Hook Form, Leaflet y React-Leaflet |
+| Backend         | Node.js 24, Express, TypeScript, Zod, Helmet, Pino y Sharp                           |
+| Datos           | PostgreSQL 17, PostGIS, pgvector 0.8.5, Drizzle ORM y `pg`                           |
+| Búsqueda visual | CLIP ViT-B/32 y ONNX Runtime Node                                                    |
+| Testing         | Vitest, React Testing Library, Supertest y Playwright                                |
+| Operación       | GitHub Actions, Docker Compose y Nginx unprivileged                                  |
 
 ## Requisitos
 
 - Node.js 24 LTS (`>=24 <25`; véase `.nvmrc`).
 - npm 11 (`>=11 <12`).
-- PostgreSQL 17 con la extensión PostGIS disponible y activa.
+- PostgreSQL 17 con PostGIS y pgvector para las funciones y suites con base real.
+- Docker Compose, opcional en desarrollo y necesario para reproducir el deployment.
+- Chromium de Playwright para E2E.
+- Modelo ONNX provisionado externamente para inferencia visual real.
 
-## Arquitectura
-
-Se mantendrá un monorepo con aplicaciones separadas y código compartido explícito. El frontend seguirá `UI → hooks/application → services → REST API`; el backend seguirá `Route → Controller → Service/Use Case → Repository → Database`. Los detalles y diagramas están en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Funcionalidades previstas
-
-### MVP
-
-Registro, login, perfil, publicaciones de animales perdidos, encontrados y en adopción, imágenes, búsqueda, filtros, ubicación, mapa y contacto por publicación.
-
-### Futuras
-
-Favoritos, protectoras, reportes, roles, moderación y matching tradicional entre publicaciones `LOST` y `FOUND`.
-
-### Avanzadas
-
-Matching visual mediante embeddings, pgvector, PWA y mejoras de producto basadas en evidencia.
-
-## Instalación
-
-Desde la raíz del repositorio:
+## Instalación y configuración
 
 ```bash
 npm install
+cp .env.example .env
 ```
 
-Este comando instala todos los workspaces y actualiza el único `package-lock.json` raíz.
+Adapta las URLs PostgreSQL de `.env`. Deben existir bases separadas para desarrollo, tests y E2E; las dos últimas deben terminar en `_test` y `_e2e`. No reutilices credenciales de ejemplo fuera de desarrollo.
 
-## Ejecución frontend
+El backend usa `DATABASE_URL`; `DATABASE_TEST_URL` es obligatoria para `test:db` y `DATABASE_E2E_URL` para Playwright. El frontend toma `VITE_API_URL` de `apps/web/.env.example`.
 
-```bash
-npm run dev:web
-```
+Para búsqueda visual, descarga y verifica el artefacto fijado siguiendo [docs/VISUAL_SEARCH_SPIKE.md](docs/VISUAL_SEARCH_SPIKE.md), guárdalo en `.data/models` y configura `VISUAL_MODEL_PATH`. El modelo, uploads y temporales están ignorados por Git.
 
-Vite mostrará la URL local, habitualmente `http://localhost:5173`. La interfaz consume la API configurada mediante `VITE_API_URL`, incluidas las rutas relativas de contenido de imagen.
+### PostgreSQL local o Docker
 
-## Ejecución backend
+La instalación local debe proporcionar PostgreSQL 17, PostGIS y pgvector. El procedimiento y preflight están en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-```bash
-npm run dev:api
-```
-
-La API usa por defecto `http://localhost:3000`. También se pueden iniciar ambos procesos con `npm run dev`; `concurrently` coordina y cierra ambos procesos de forma multiplataforma.
-
-Antes de iniciar la API, copia `.env.example` a `.env` y adapta las URLs a tu instalación. `DATABASE_TEST_URL` es opcional para la API, pero obligatoria para `test:db`.
-
-Para búsqueda visual descarga el artefacto fijado según [docs/VISUAL_SEARCH_SPIKE.md](docs/VISUAL_SEARCH_SPIKE.md), verifica su SHA-256 y configura `VISUAL_MODEL_PATH`. El modelo vive en `.data/models`, está ignorado por Git y nunca forma parte del bundle frontend.
-
-## Health endpoint
-
-`GET http://localhost:3000/api/v1/health` devuelve `200` con `{ "status": "ok", "database": "ok" }` cuando PostgreSQL responde, o `503` con `{ "status": "error", "database": "unavailable" }`. No expone configuración del sistema.
-
-## PostgreSQL
-
-La aplicación solo depende de `DATABASE_URL`; no detecta ni requiere Docker.
-
-### Opción A — PostgreSQL local
-
-Se requiere PostgreSQL 17 con PostGIS. La migración geoespacial `0003` está implementada y aplicada en el entorno validado. El procedimiento Windows específico y el preflight de solo lectura están en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Crea bases separadas de desarrollo y test con usuarios sin privilegios de superusuario. Ejemplo orientativo ejecutado por una cuenta administradora:
-
-```sql
-CREATE ROLE red_huella_app LOGIN PASSWORD 'contraseña-local-segura';
-CREATE DATABASE red_huella OWNER red_huella_app;
-CREATE ROLE red_huella_test LOGIN PASSWORD 'otra-contraseña-local';
-CREATE DATABASE red_huella_test OWNER red_huella_test;
-```
-
-Configura ambas URLs en `.env`. La base de test debe ser distinta y su nombre debe terminar en `_test`.
-
-### Opción B — Docker Compose
-
-Si Docker está instalado:
+Como alternativa de desarrollo:
 
 ```bash
 docker compose up -d
 ```
 
-`compose.yml` levanta `postgis/postgis:17-3.5` exclusivamente en `127.0.0.1:5434` (el contenedor conserva `5432`), con volumen persistente, healthcheck y credenciales exclusivamente de desarrollo. El cambio de imagen no reinicializa un volumen existente ni debe provocar su borrado. Docker Compose es un entorno local reproducible opcional; no representa la estrategia definitiva de producción. La aplicación sigue conociendo únicamente `DATABASE_URL`.
+`compose.yml` publica PostgreSQL solamente en `127.0.0.1:5434` y conserva datos en un volumen. Cambiar la imagen no inicializa extensiones sobre un volumen existente ni autoriza a borrarlo.
 
-Diagnóstico de solo lectura contra la URL configurada:
+## Desarrollo y ejecución local
 
 ```bash
-npm run db:postgis:preflight
+npm run db:migrate
+npm run dev
 ```
 
-## Migrations y seed
-
-Los comandos disponibles son:
+También pueden iniciarse por separado:
 
 ```bash
-npm run db:generate
-npm run db:migrate
-npm run db:studio
+npm run dev:api
+npm run dev:web
+```
+
+La API escucha normalmente en `http://localhost:3000` y Vite en `http://localhost:5173`. `GET /api/v1/health` devuelve `200` cuando API y PostgreSQL están disponibles.
+
+El seed es opcional e idempotente:
+
+```bash
 npm run db:seed
 ```
 
-El flujo principal usa migrations versionadas, nunca `db push`. `db:seed` añade de forma idempotente dos usuarios sin contraseña, tres animales y tres publicaciones. No crea administradores, credenciales, imágenes ficticias ni binarios demo.
+Crea datos de demostración sin contraseñas, imágenes binarias ni credenciales utilizables. Para una prueba manual debe registrarse un usuario desde la interfaz o mediante `POST /api/v1/auth/register`; no existen credenciales demo predefinidas.
 
-## Tests PostgreSQL
+## Tests y calidad
 
 ```bash
+npm run lint
+npm run typecheck
+npm run test
 npm run test:db
-```
-
-El comando requiere `NODE_ENV=test`, `DATABASE_TEST_URL` diferente de `DATABASE_URL` y una base cuyo nombre termine en `_test`. Aplica migrations y limpia exclusivamente las tablas conocidas de esa base de test entre pruebas.
-
-## Tests E2E
-
-Playwright valida seis recorridos críticos en Chromium contra API, frontend y PostgreSQL reales. Configura `DATABASE_E2E_URL` con una base exclusiva terminada en `_e2e`; la suite aplica migraciones y limpia solo ese entorno:
-
-```bash
 npm run test:e2e
-npm run test:e2e:headed
+npm run build
+npm run format:check
+npm audit --omit=dev
 ```
 
-La instalación inicial del navegador se realiza con `npx playwright install chromium`. Se requieren PostgreSQL 17, PostGIS y pgvector. Los servidores de prueba usan los puertos aislados 3100/5174 y los tiles externos quedan bloqueados. Consulta [docs/TESTING.md](docs/TESTING.md) para las salvaguardas, artefactos y alcance del mock HTTP de búsqueda visual.
+- `npm run test`: 265 tests unitarios y de integración sin PostgreSQL real.
+- `npm run test:db`: 99 tests contra PostgreSQL/PostGIS/pgvector en una base `_test` protegida.
+- `npm run test:e2e`: 6 recorridos Playwright en Chromium contra API, frontend y base `_e2e` reales.
 
-## Estructura del proyecto
+Playwright usa puertos aislados 3100/5174, bloquea tiles externos y no reutiliza servidores. La búsqueda visual E2E intercepta solo su petición de inferencia porque el modelo no se versiona; el pipeline ONNX real se valida en suites específicas. Consulta [docs/TESTING.md](docs/TESTING.md).
 
-```text
-red-huella/
-├── apps/
-│   ├── web/              # Frontend inicializado
-│   └── api/              # Backend base y tooling PostgreSQL/Drizzle
-├── packages/             # Reservado; sin paquete compartido prematuro
-├── database/             # Migraciones y seeds futuros
-├── docs/                 # Documentación viva
-├── scripts/              # Automatización futura
-├── .github/workflows/    # CI futura
-├── AGENTS.md
-├── SECURITY.md
-└── package.json          # Coordinador de npm workspaces
-```
+## Búsqueda visual
 
-## Testing
+La consulta recibe una imagen efímera, la valida y normaliza con Sharp, genera un embedding CLIP de 512 dimensiones y ordena candidatos `READY` compatibles por distancia coseno exacta en pgvector. La imagen de consulta, embedding y score no se persisten ni aparecen en logs. El endpoint exige autenticación, Origin válido y rate limiting.
 
-Existen tests de comportamiento frontend para autenticación, publicaciones, imágenes, geolocalización y contacto, además de suites unitarias, HTTP y PostgreSQL de la API. La estrategia completa está en [docs/TESTING.md](docs/TESTING.md).
+El modelo se provisiona fuera del repositorio con checksum verificado. Sin modelo válido, el resto de la aplicación continúa disponible y la búsqueda devuelve un error estable de indisponibilidad.
 
-## Deployment de referencia
+## Deployment
 
-El despliegue del TFM usa `compose.prod.yml`: PostgreSQL 17 con PostGIS y pgvector 0.8.5, un job one-shot de migraciones, la API Node 24 y Nginx sirviendo el bundle Vite y actuando como reverse proxy de `/api`. PostgreSQL y API no publican puertos; el único puerto HTTP queda ligado por defecto a loopback para un terminador TLS externo.
+El deployment de referencia usa `compose.prod.yml`: PostgreSQL 17 con PostGIS y pgvector, migración one-shot, API Node no root, almacenamiento persistente de imágenes y Nginx unprivileged como único punto HTTP.
 
 ```bash
 cp .env.production.example .env.production
@@ -190,36 +139,29 @@ docker compose --env-file .env.production -f compose.prod.yml build --pull
 docker compose --env-file .env.production -f compose.prod.yml up -d
 ```
 
-El modelo ONNX se provisiona previamente en `.data/models`, las imágenes usan un volumen persistente y producción no ejecuta seed. Variables, HTTPS, verificación, backups, restore, actualizaciones y troubleshooting se describen en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+GitHub Actions valida configuración, construye imágenes, arranca el stack y comprueba PostgreSQL, migraciones, API y ambos endpoints HTTP a través de Nginx. HTTPS termina fuera de Compose; antes de aceptar usuarios reales deben configurarse secretos, dominio, TLS, backups y retención. Véase [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-## Calidad
+## Limitaciones conocidas
 
-Desde la raíz:
+- La similitud visual no demuestra identidad y se ha calibrado con un conjunto pequeño, no con un dataset representativo.
+- Los rate limiters viven en memoria y no coordinan múltiples instancias.
+- Los datos de contacto se almacenan en texto plano; producción requiere permisos mínimos y backups cifrados, y puede justificar envelope encryption/KMS.
+- El modelo ONNX se provisiona externamente y no forma parte de las imágenes Docker.
+- El almacenamiento de imágenes es local persistente; un adaptador S3/R2 queda como evolución futura.
+- `trust proxy` permanece deshabilitado hasta fijar y probar la topología real de proxies.
+- Verificación de email y recuperación de cuenta no están implementadas.
+- Favoritos, moderación, roles de protectoras y matching tradicional quedan fuera del alcance entregado.
 
-```bash
-npm run lint
-npm run format:check
-npm run typecheck
-npm run test
-npm run build
-```
+## Trabajo futuro
 
-## Seguridad
+El trabajo futuro se priorizará con evidencia: dataset representativo y Recall@K, ANN si el volumen lo justifica, S3/R2, rate limiting distribuido, protección gestionada de PII, recuperación/verificación de cuenta, favoritos, reportes, moderación y matching explicable `LOST`–`FOUND`.
 
-La estrategia, amenazas y separación entre controles implementados y planificados se documentan en [SECURITY.md](SECURITY.md).
+## Documentación
 
-## Deployment
-
-Preparado mediante Docker Compose; la elección de hosting, dominio y terminador TLS depende del entorno final.
-
-## Usuario demo
-
-Pendiente.
-
-## Slides
-
-Pendiente para fase final del TFM.
-
-## Vídeo
-
-Pendiente para fase final del TFM.
+- [Roadmap](docs/ROADMAP.md)
+- [API](docs/API.md)
+- [Testing](docs/TESTING.md)
+- [Privacidad](docs/PRIVACY.md)
+- [Seguridad](SECURITY.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Checklist de entrega](docs/DELIVERY-CHECKLIST.md)

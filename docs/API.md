@@ -119,7 +119,7 @@ Todos los POST requieren `Origin` igual a `WEB_ORIGIN`. Registro y login estable
 
 ## Estado
 
-La base Express y los endpoints de autenticación, publicaciones, imágenes y búsqueda geográfica están implementados. El frontend consume estos contratos para gestión, mapas aproximados y búsqueda cercana.
+La base Express y los endpoints de autenticación, publicaciones, imágenes, contacto, mapa/búsqueda geográfica y búsqueda visual están implementados. El frontend consume estos contratos para gestión y exploración.
 
 El modelo y repositories de `users`, `animals` y `publications` son internos. No se han creado endpoints temporales ni se expone acceso directo a persistencia.
 
@@ -133,7 +133,7 @@ El modelo y repositories de `users`, `animals` y `publications` son internos. No
 - Comprueba readiness de la API y PostgreSQL. No se separa liveness todavía porque existe un único proceso/dependencia y no aporta operación adicional en esta fase.
 - No expone variables, host, usuario, versiones, rutas internas ni errores del driver.
 
-## Convenciones previstas
+## Convenciones
 
 - Base path: `/api/v1`.
 - HTTPS obligatorio fuera del entorno local.
@@ -177,7 +177,7 @@ Salvo los endpoints de auth y publicaciones documentados como implementados, est
 - Recuperación de contraseña y verificación de email bajo auth.
 - `GET/PATCH /api/v1/users/me` y operación futura de eliminación.
 - Eliminación física de publicaciones, si se justifica en un milestone futuro.
-- La UI de imágenes y el adaptador de object storage S3/R2 siguen pendientes; el backend descrito debajo está implementado.
+- El adaptador de object storage S3/R2 sigue pendiente; backend y UI de imágenes están implementados.
 
 ## Contrato implementado de imágenes
 

@@ -32,7 +32,7 @@ La búsqueda visual usa una ruta dedicada `/search-by-image`, enlazada desde Exp
 
 El flujo es `Browser File → multipart temporal → embedding API → pgvector → candidatos → descarte de la imagen query`. El navegador no persiste el archivo ni lo codifica como base64. El bundle web no contiene Sharp, ONNX ni el modelo CLIP.
 
-El smoke real de cierre confirmó sesión HTTP, multipart, preprocessing, ONNX y ranking pgvector. El proceso carga una única sesión lazy compartida: RSS pasó aproximadamente de 87 MiB a 295 MiB y quedó en 301 MiB tras un segundo lote, sin crecimiento lineal por request. Son observaciones locales, no un SLO. La validación visual manual en navegador continúa pendiente.
+El smoke real de cierre confirmó sesión HTTP, multipart, preprocessing, ONNX y ranking pgvector. El proceso carga una única sesión lazy compartida: RSS pasó aproximadamente de 87 MiB a 295 MiB y quedó en 301 MiB tras un segundo lote, sin crecimiento lineal por request. Son observaciones locales, no un SLO. La validación manual posterior completó el recorrido de navegador y la calibración consolidó el resultado como similitud, no identidad.
 
 `Page/feature → TanStack Query o formulario → cliente API central → fetch credentials: include → Express API`.
 
@@ -110,7 +110,7 @@ En rutas protegidas: `Cookie → requireAuth → hash de token → SessionReposi
 
 ## Estado y objetivos
 
-**Estado: arquitectura aceptada; autenticación del Milestone 4 implementada.**
+**Estado: arquitectura implementada y consolidada al cierre del Milestone 15.**
 
 La arquitectura prioriza separación de responsabilidades, cambios incrementales y testabilidad. Se mantendrá un monorepo porque frontend, API, contratos y documentación evolucionarán juntos. No se incorporarán servicios distribuidos sin una necesidad demostrada.
 
@@ -125,8 +125,8 @@ flowchart TD
     C --> S[Application Services / Use Cases]
     S --> R[Repositories]
     R --> P[(PostgreSQL)]
-    P -. extensión futura .-> G[PostGIS]
-    P -. extensión avanzada .-> V[pgvector]
+    P --> G[PostGIS]
+    P --> V[pgvector]
 ```
 
 React/Vite y Express implementan identidad, publicaciones, imágenes y geolocalización. PostgreSQL/Drizzle/PostGIS aporta persistencia relacional y espacial mediante migrations versionadas; la API expone health y los contratos de dominio documentados.
@@ -183,7 +183,7 @@ flowchart LR
 - Controller: traduce HTTP, obtiene datos ya validados, invoca un caso de uso y construye la respuesta.
 - Service/Use Case: reglas, coordinación, autorización contextual y transacciones.
 - Repository: persistencia y queries parametrizadas; no expone detalles de BD a controllers.
-- Middleware transversal: autenticación futura, límites, correlación y errores; no esconderá reglas de negocio.
+- Middleware transversal: autenticación, límites, correlación y errores; no esconde reglas de negocio.
 
 La implementación actual separa `routes/health.routes.ts`, `services/health.service.ts` y `database/client.ts`. El health no tiene controller porque añadiría una delegación sin lógica. Las dependencias se inyectan en `createApp` para probar la API sin abrir puertos ni exigir PostgreSQL.
 
@@ -201,7 +201,7 @@ flowchart LR
 
 ## Comunicación y contratos
 
-La API futura será REST/JSON bajo `/api/v1`. Se definirán respuestas y errores consistentes, paginación y compatibilidad. `packages/shared` alojará únicamente contratos que deban compilarse en ambos lados; no contendrá acceso a Express, React o base de datos.
+La API es REST/JSON bajo `/api/v1`, con respuestas y errores consistentes, paginación y compatibilidad documentadas. `packages/shared` se reserva para contratos que deban compilarse en ambos lados; no contendrá acceso a Express, React o base de datos.
 
 ## Persistencia
 
@@ -228,7 +228,7 @@ PostgreSQL es la fuente de verdad y PostGIS implementa la búsqueda geoespacial.
 
 ## Autenticación
 
-Pendiente de diseño detallado y ADR. Independientemente del mecanismo elegido, autenticación y autorización se impondrán en backend; el frontend no será una frontera de seguridad.
+La autenticación usa sesiones opacas revocables persistidas en PostgreSQL y cookie HttpOnly. Autenticación, autorización contextual y ownership se imponen en backend; el frontend no es una frontera de seguridad.
 
 ## Matching futuro
 
@@ -253,7 +253,7 @@ El Bloque 1 incorpora pgvector detrás de `PublicationImageEmbeddingRepository`.
 
 El Bloque 2 añade un caso de uso interno `storage → checksum canónico → ONNX → repository` y un CLI secuencial por lotes. Los uploads solo insertan PENDING transaccionalmente y nunca esperan inferencia.
 
-El Bloque 3 conecta ese mismo caso de uso a `VisualEmbeddingProcessor`: un componente independiente de HTTP que selecciona PENDING no archivados, procesa secuencialmente lotes pequeños y programa el siguiente ciclo con `setTimeout` al finalizar. El servidor empieza a escuchar antes de arrancarlo y su shutdown detiene el timer y espera el item en curso. Modelo y sesión permanecen lazy y compartidos. `visual:process-pending` ejecuta un solo ciclo; `visual:backfill` continúa siendo la herramienta administrativa para dry-run, límite y retry de FAILED. Ambos usan advisory locks por imagen. Todavía no existe endpoint de búsqueda.
+El Bloque 3 conecta ese mismo caso de uso a `VisualEmbeddingProcessor`: un componente independiente de HTTP que selecciona PENDING no archivados, procesa secuencialmente lotes pequeños y programa el siguiente ciclo con `setTimeout` al finalizar. El servidor empieza a escuchar antes de arrancarlo y su shutdown detiene el timer y espera el item en curso. Modelo y sesión permanecen lazy y compartidos. `visual:process-pending` ejecuta un solo ciclo; `visual:backfill` continúa siendo la herramienta administrativa para dry-run, límite y retry de FAILED. Ambos usan advisory locks por imagen. El endpoint autenticado de búsqueda se incorporó después sobre este pipeline.
 
 El Bloque 4 añade `route → controller → SearchPublicationsByImageService → VisualSearchRepository → pgvector`. El multipart mantiene una sola imagen en memoria, el service genera un embedding efímero y el repository calcula coseno y agregación en una única consulta. La imagen, el vector y el lifecycle de la query nunca se persisten. La sesión ONNX global del módulo se comparte con el processor; no existe pool adicional.
 
