@@ -257,4 +257,25 @@ El Bloque 3 conecta ese mismo caso de uso a `VisualEmbeddingProcessor`: un compo
 
 El Bloque 4 añade `route → controller → SearchPublicationsByImageService → VisualSearchRepository → pgvector`. El multipart mantiene una sola imagen en memoria, el service genera un embedding efímero y el repository calcula coseno y agregación en una única consulta. La imagen, el vector y el lifecycle de la query nunca se persisten. La sesión ONNX global del módulo se comparte con el processor; no existe pool adicional.
 
-Las decisiones aceptadas están en `DECISIONS.md`. Autenticación, publicaciones, imágenes y PostGIS están implementados; deployment productivo y capacidades posteriores permanecen fuera del alcance actual.
+Las decisiones aceptadas están en `DECISIONS.md`. Autenticación, publicaciones, imágenes, PostGIS y el deployment de referencia están implementados; las capacidades posteriores permanecen fuera del alcance actual.
+
+## Deployment de referencia del Milestone 14
+
+`compose.prod.yml` empaqueta una topología de una sola instancia, deliberadamente simple:
+
+```mermaid
+flowchart LR
+    B[Browser] -->|HTTPS| TLS[Terminador TLS externo]
+    TLS -->|HTTP loopback| W[Nginx + React]
+    W -->|/api| A[Node 24 / Express]
+    A --> PG[(PostgreSQL 17\nPostGIS + pgvector)]
+    A --> FS[(Volumen privado de imágenes)]
+    A --> M[Modelo ONNX read-only]
+    MG[Migrate one-shot] --> PG
+```
+
+Nginx compila `VITE_API_URL=/api/v1`, sirve la SPA con fallback y es el único servicio con puerto publicado. La API runtime instala solo dependencias productivas, se ejecuta como usuario `node`, usa filesystem read-only salvo volúmenes/tmpfs y no contiene `.env` ni el modelo. Un target separado conserva Drizzle Kit exclusivamente para `npm run db:migrate` antes del startup.
+
+La imagen PostgreSQL combina pgvector 0.8.5 y PostGIS sobre PostgreSQL 17. Una identidad migradora posee el schema y configura privilegios por defecto para `red_huella_app`, usada por la API. Las extensiones continúan siendo responsabilidad de las migraciones. Health representa readiness de API+DB; no se inventó un liveness independiente.
+
+LocalImageStorage es aceptable para esta única réplica porque `/app/.data` es un volumen persistente privado. S3/R2, varias réplicas, rate limiting distribuido, observabilidad empresarial y alta disponibilidad siguen fuera de alcance. Véase `docs/DEPLOYMENT.md`.

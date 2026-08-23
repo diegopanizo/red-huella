@@ -1,5 +1,13 @@
 # Changelog
 
+## Milestone 14 — completado
+
+- Añadidas imágenes multi-stage de producción para API Node 24 y frontend Vite/Nginx, sin Alpine ni secretos incorporados.
+- Incorporado `compose.prod.yml` con PostgreSQL 17, PostGIS, pgvector 0.8.5, migración one-shot, healthchecks y startup condicionado.
+- Separadas identidad migradora y cuenta DB runtime; PostgreSQL/API quedan internos y Nginx es el único origen HTTP.
+- Persistidas imágenes en volumen privado y definido provisioning read-only del modelo ONNX con checksum fijado.
+- Documentados HTTPS externo, variables, logs, backup/restore, actualización, rollback y troubleshooting en el runbook operativo.
+
 ## Milestone 9 — completado
 
 - Añadido contacto voluntario por publicación mediante WhatsApp, teléfono y email, sin reutilizar automáticamente el email de acceso.

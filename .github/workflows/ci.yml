@@ -164,3 +164,71 @@ jobs:
 
       - name: Run end-to-end tests
         run: npm run test:e2e
+
+  production-container-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      POSTGRES_DB: red_huella
+      POSTGRES_USER: red_huella_migrator
+      POSTGRES_PASSWORD: ci_migrator_password
+      APP_DATABASE_PASSWORD: ci_app_password
+      MIGRATION_DATABASE_URL: postgresql://red_huella_migrator:ci_migrator_password@postgres:5432/red_huella
+      DATABASE_URL: postgresql://red_huella_app:ci_app_password@postgres:5432/red_huella
+      WEB_ORIGIN: https://red-huella.test
+      LOG_LEVEL: silent
+      IMAGE_STORAGE_DRIVER: local
+      IMAGE_STORAGE_LOCAL_ROOT: /app/.data/uploads
+      VISUAL_EMBEDDING_PROCESSOR_ENABLED: 'false'
+      VISUAL_EMBEDDING_POLL_INTERVAL_MS: 30000
+      VISUAL_EMBEDDING_BATCH_SIZE: 5
+      WEB_HTTP_PORT: 18080
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare empty model mount
+        run: mkdir -p .data/models
+
+      - name: Validate production Compose
+        run: docker compose -f compose.prod.yml config --quiet
+
+      - name: Build production images
+        run: docker compose -f compose.prod.yml build
+
+      - name: Start production stack
+        run: docker compose -f compose.prod.yml up --detach
+
+      - name: Verify containers and healthchecks
+        shell: bash
+        run: |
+          for attempt in {1..36}; do
+            if curl --fail --silent http://127.0.0.1:18080/ >/dev/null && \
+              curl --fail --silent http://127.0.0.1:18080/api/v1/health >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 36 ]; then
+              docker compose -f compose.prod.yml ps --all
+              docker compose -f compose.prod.yml logs --no-color
+              exit 1
+            fi
+            sleep 5
+          done
+
+          postgres_id="$(docker compose -f compose.prod.yml ps --quiet postgres)"
+          migrate_id="$(docker compose -f compose.prod.yml ps --all --quiet migrate)"
+          api_id="$(docker compose -f compose.prod.yml ps --quiet api)"
+
+          test "$(docker inspect --format '{{.State.Health.Status}}' "$postgres_id")" = healthy
+          test "$(docker inspect --format '{{.State.ExitCode}}' "$migrate_id")" = 0
+          test "$(docker inspect --format '{{.State.Health.Status}}' "$api_id")" = healthy
+
+      - name: Show production container logs on failure
+        if: failure()
+        run: |
+          docker compose -f compose.prod.yml ps --all
+          docker compose -f compose.prod.yml logs --no-color
+
+      - name: Remove production smoke resources
+        if: always()
+        run: docker compose -f compose.prod.yml down --volumes --remove-orphans

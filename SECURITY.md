@@ -188,3 +188,11 @@ Se usarán logs estructurados con identificadores de correlación y redacción d
 Las vulnerabilidades no deben publicarse en issues abiertos. Hasta definir un canal privado del proyecto, contactar directamente con la persona responsable del repositorio. El procedimiento y tiempos de respuesta se concretarán antes de hacer público el producto.
 
 La auditoría general de cierre del Milestone 9 mantiene cuatro avisos moderados en dependencias de desarrollo transitivas de `drizzle-kit`, originados por una versión antigua de `esbuild`. `npm audit --omit=dev` devuelve cero vulnerabilidades de runtime. La corrección automática propuesta rebajaría Drizzle Kit con un cambio mayor, por lo que no se aplicó sin validación. Drizzle Studio no debe exponerse a redes no confiables; el riesgo se revisará al actualizar el toolkit.
+
+## Deployment de referencia
+
+Las imágenes de producción excluyen `.env`, `.data`, Git, tests y `node_modules` locales. API se ejecuta como usuario no root sobre Debian, con root filesystem read-only, volumen persistente privado para imágenes y modelo ONNX montado read-only. Nginx usa su variante unprivileged. PostgreSQL y API no publican puertos; solo Nginx escucha en loopback para un terminador HTTPS externo.
+
+La cuenta runtime `red_huella_app` recibe permisos de datos mediante default privileges y no puede ejecutar migraciones. La identidad propietaria queda limitada al job `migrate`; Compose aplica una allowlist para que API no reciba sus credenciales. Los secretos runtime, de migración y de backups deben gestionarse por separado. Los scripts de inicialización solo actúan sobre volúmenes nuevos y nunca justifican borrar datos.
+
+`WEB_ORIGIN` exige HTTPS en producción y las cookies son Secure. El Compose no habilita `trust proxy`: hasta fijar y probar la topología exacta, los rate limits IP pueden compartir el bucket de Nginx. Activar confianza genérica en `X-Forwarded-For` permitiría spoofing y está prohibido. Los backups incluyen PII y ubicaciones exactas; requieren cifrado, acceso mínimo, retención y pruebas de restore.

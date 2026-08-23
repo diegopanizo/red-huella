@@ -1,0 +1,110 @@
+name: red-huella-production
+
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      APP_DATABASE_PASSWORD: ${APP_DATABASE_PASSWORD:?APP_DATABASE_PASSWORD is required}
+    volumes:
+      - red_huella_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    networks: [internal]
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migration
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      WEB_ORIGIN: ${WEB_ORIGIN:?WEB_ORIGIN is required}
+      DATABASE_URL: ${MIGRATION_DATABASE_URL:?MIGRATION_DATABASE_URL is required}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    networks: [internal]
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      WEB_ORIGIN: ${WEB_ORIGIN:?WEB_ORIGIN is required}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      IMAGE_STORAGE_DRIVER: ${IMAGE_STORAGE_DRIVER:-local}
+      IMAGE_STORAGE_LOCAL_ROOT: ${IMAGE_STORAGE_LOCAL_ROOT:-/app/.data/uploads}
+      VISUAL_MODEL_PATH: ${VISUAL_MODEL_PATH:-/app/.data/models/clip-vit-base-patch32-vision-quantized.onnx}
+      VISUAL_EMBEDDING_PROCESSOR_ENABLED: ${VISUAL_EMBEDDING_PROCESSOR_ENABLED:-false}
+      VISUAL_EMBEDDING_POLL_INTERVAL_MS: ${VISUAL_EMBEDDING_POLL_INTERVAL_MS:-30000}
+      VISUAL_EMBEDDING_BATCH_SIZE: ${VISUAL_EMBEDDING_BATCH_SIZE:-5}
+    volumes:
+      - red_huella_image_data:/app/.data
+      - ./.data/models:/app/.data/models:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+    networks: [internal]
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    ports:
+      - 127.0.0.1:${WEB_HTTP_PORT:-8080}:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+      - /var/cache/nginx:size=16m,mode=0777
+      - /var/run:size=1m,mode=0777
+    restart: unless-stopped
+    networks: [internal]
+
+volumes:
+  red_huella_postgres_data:
+  red_huella_image_data:
+
+networks:
+  internal:
+    internal: true

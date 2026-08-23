@@ -109,7 +109,7 @@ El objetivo es validar los recorridos demostrables del TFM, no exigir una cobert
 
 Se incorporaron seis recorridos Playwright sobre Chromium: autenticación y sesión, alta y gestión owner de una publicación, upload y galería, contacto protegido entre dos usuarios, búsqueda visual y experiencia móvil de «Cerca de mí» con lista/mapa. La suite usa PostgreSQL/PostGIS/pgvector real en una base dedicada `_e2e`, aplica migraciones, limpia solo sus tablas, genera datos sintéticos y bloquea tiles externos. La búsqueda visual intercepta exclusivamente su POST porque el modelo ONNX no es un artefacto versionado; el pipeline real permanece cubierto por integración. CI ejecuta la suite en un job separado.
 
-## Milestone 14 — Deployment y operación
+## Milestone 14 — Deployment y operación (completado)
 
 - Preparar un entorno de producción realista para el TFM.
 - Definir variables de entorno, base de datos, migraciones, almacenamiento y modelo visual.
@@ -117,6 +117,8 @@ Se incorporaron seis recorridos Playwright sobre Chromium: autenticación y sesi
 - Documentar el procedimiento de arranque y un runbook operativo.
 
 No exige alta disponibilidad ni infraestructura empresarial.
+
+Se incorporó un deployment Docker Compose reproducible con PostgreSQL 17/PostGIS/pgvector, migración one-shot, API Node 24 no root, frontend estático y reverse proxy Nginx bajo un solo origen. PostgreSQL/API permanecen internos; imágenes usan volumen persistente y el modelo ONNX se monta read-only tras provisioning y checksum. El runbook cubre variables, HTTPS externo, startup, health/readiness, logs, backup, restore, update, rollback y troubleshooting. Docker no estaba disponible en el entorno Windows de implementación, por lo que build/start requieren la verificación operativa documentada en un host con Docker; la configuración y el resto del proyecto se validaron estáticamente.
 
 ## Milestone 15 — Preparación final TFM
 

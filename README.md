@@ -20,20 +20,20 @@ El público previsto incluye personas responsables de animales, ciudadanía que 
 
 ## Estado del proyecto
 
-**En desarrollo — Milestone 11 en curso (búsqueda visual).**
+**En desarrollo — Milestones 0–14 completados.**
 
 La aplicación implementa autenticación, publicaciones e imágenes, ubicación privada/pública separada, búsqueda por cercanía, mapas aproximados, mapa global, contacto autenticado y búsqueda visual por una foto efímera. Esta última recupera candidatos por similitud mediante CLIP y pgvector; no identifica animales ni expresa una probabilidad. La API Express usa PostgreSQL 17 + PostGIS + pgvector, Drizzle, errores sanitizados, request IDs, logging estructurado y cierre gracioso.
 
 ## Stack tecnológico
 
-| Área            | Estado           | Tecnología                                                            |
-| --------------- | ---------------- | --------------------------------------------------------------------- |
-| Frontend        | Funcional        | React 19, Vite, TypeScript, Leaflet y React-Leaflet                   |
-| Backend         | Base técnica     | Node.js, Express, TypeScript, Helmet, CORS y Zod                      |
-| Base de datos   | Geoespacial      | PostgreSQL 17, PostGIS 3.6, `pg`, Drizzle, migrations y seed          |
-| Matching visual | En validación    | CLIP ViT-B/32, ONNX Runtime Node, pgvector y búsqueda coseno exacta   |
-| Testing         | Base configurada | Vitest, React Testing Library y Supertest; Playwright queda pendiente |
-| Infraestructura | CI inicial       | GitHub Actions; plataforma de despliegue pendiente                    |
+| Área            | Estado        | Tecnología                                                          |
+| --------------- | ------------- | ------------------------------------------------------------------- |
+| Frontend        | Funcional     | React 19, Vite, TypeScript, Leaflet y React-Leaflet                 |
+| Backend         | Base técnica  | Node.js, Express, TypeScript, Helmet, CORS y Zod                    |
+| Base de datos   | Geoespacial   | PostgreSQL 17, PostGIS 3.6, `pg`, Drizzle, migrations y seed        |
+| Matching visual | En validación | CLIP ViT-B/32, ONNX Runtime Node, pgvector y búsqueda coseno exacta |
+| Testing         | Validado      | Vitest, React Testing Library, Supertest y Playwright               |
+| Infraestructura | Reproducible  | GitHub Actions y Docker Compose de producción                       |
 
 ## Requisitos
 
@@ -179,6 +179,19 @@ red-huella/
 
 Existen tests de comportamiento frontend para autenticación, publicaciones, imágenes, geolocalización y contacto, además de suites unitarias, HTTP y PostgreSQL de la API. La estrategia completa está en [docs/TESTING.md](docs/TESTING.md).
 
+## Deployment de referencia
+
+El despliegue del TFM usa `compose.prod.yml`: PostgreSQL 17 con PostGIS y pgvector 0.8.5, un job one-shot de migraciones, la API Node 24 y Nginx sirviendo el bundle Vite y actuando como reverse proxy de `/api`. PostgreSQL y API no publican puertos; el único puerto HTTP queda ligado por defecto a loopback para un terminador TLS externo.
+
+```bash
+cp .env.production.example .env.production
+docker compose --env-file .env.production -f compose.prod.yml config --quiet
+docker compose --env-file .env.production -f compose.prod.yml build --pull
+docker compose --env-file .env.production -f compose.prod.yml up -d
+```
+
+El modelo ONNX se provisiona previamente en `.data/models`, las imágenes usan un volumen persistente y producción no ejecuta seed. Variables, HTTPS, verificación, backups, restore, actualizaciones y troubleshooting se describen en [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## Calidad
 
 Desde la raíz:
@@ -197,7 +210,7 @@ La estrategia, amenazas y separación entre controles implementados y planificad
 
 ## Deployment
 
-Pendiente.
+Preparado mediante Docker Compose; la elección de hosting, dominio y terminador TLS depende del entorno final.
 
 ## Usuario demo
 

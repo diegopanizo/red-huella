@@ -267,3 +267,15 @@ Los ADR son simplificados. Un cambio posterior conservará la decisión anterior
 **Alternatives:** Exigir instalación local, dockerizar todo el monorepo o usar una base embebida.
 
 **Consequences:** La aplicación no conoce Docker y puede apuntar a local/cloud. Docker es opcional, publica `5434:5432` para no colisionar con PostgreSQL Windows en 5432/5433 y sus credenciales son solo de desarrollo. La instalación PostgreSQL 9.5 detectada no es la versión objetivo.
+
+## ADR-026 — Deployment Docker Compose de referencia
+
+**Status:** Accepted
+
+**Context:** El TFM necesita deployment reproducible para Node 24 con binarios nativos, PostgreSQL 17/PostGIS/pgvector, frontend Vite, imágenes persistentes y modelo ONNX externo, sin construir infraestructura empresarial.
+
+**Decision:** Usar Compose con PostgreSQL interno, migración one-shot, API Debian no root y Nginx unprivileged como único origen. Mantener imágenes en volumen persistente y provisionar el modelo verificado mediante bind mount read-only. HTTPS termina fuera del Compose.
+
+**Alternatives:** Dos orígenes públicos, assets desde Express, migraciones en cada API, Alpine, descarga automática del modelo o Kubernetes.
+
+**Consequences:** Operación sencilla de una réplica y separación de privilegios; requiere TLS externo, secretos, backups coordinados y provisioning previo. S3/R2, rate limiting distribuido, varias réplicas y `trust proxy` quedan pendientes. Véase `ADR-026-PRODUCTION-DEPLOYMENT.md`.
