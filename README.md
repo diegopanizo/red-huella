@@ -2,7 +2,7 @@
 
 Red Huella es una aplicación web para publicar y localizar animales perdidos, encontrados o en adopción. Centraliza avisos dispersos, permite explorarlos por criterios y zona aproximada y ofrece contacto protegido entre usuarios.
 
-
+Es un Trabajo de Fin de Máster con el núcleo funcional completo. Los milestones M0–M15 están cerrados, la integración continua valida código, PostgreSQL y recorridos críticos, y el deployment de referencia se construye y arranca de forma reproducible. Las limitaciones operativas y de producto están documentadas explícitamente.
 
 ## Funcionalidades principales
 
@@ -16,6 +16,12 @@ Red Huella es una aplicación web para publicar y localizar animales perdidos, e
 - Interfaz responsive y accesible para explorar, crear y gestionar publicaciones.
 
 La búsqueda visual propone imágenes parecidas: no identifica animales ni expresa una probabilidad de identidad.
+
+## Cómo funciona
+
+Una persona se registra y crea una publicación de un animal perdido, encontrado o en adopción. Puede añadir imágenes, indicar una ubicación y decidir qué métodos de contacto desea ofrecer. El servidor mantiene separada la ubicación exacta privada de la zona aproximada mostrada públicamente.
+
+Otros usuarios pueden explorar publicaciones mediante filtros, cercanía o mapa global, consultar el detalle y, tras autenticarse, revelar bajo demanda los métodos de contacto habilitados. También pueden enviar una fotografía efímera para obtener publicaciones visualmente similares, sin que el sistema interprete el resultado como identificación del animal.
 
 ## Arquitectura
 
@@ -33,6 +39,18 @@ Browser → React/Vite → REST /api/v1 → Express → servicios → repositori
 - En producción, Nginx sirve la SPA y actúa como reverse proxy bajo un único origen.
 
 El diseño completo está en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) y las decisiones en [docs/DECISIONS.md](docs/DECISIONS.md).
+
+## Componentes del sistema
+
+- **Aplicación web:** presenta los flujos públicos y privados, coordina el estado remoto y consume la API con cookies de sesión.
+- **API REST:** valida entradas, autentica sesiones, aplica ownership y coordina publicaciones, imágenes, ubicaciones, contacto y búsqueda visual.
+- **PostgreSQL:** conserva usuarios, sesiones, publicaciones, metadatos de imágenes, métodos de contacto y embeddings mediante migraciones versionadas.
+- **PostGIS:** separa las ubicaciones exactas y públicas y ejecuta las consultas espaciales exclusivamente sobre `public_location` en funcionalidades públicas.
+- **Procesamiento de imágenes:** Sharp valida y normaliza los uploads a variantes WebP sin conservar originales ni metadatos.
+- **Búsqueda visual:** ONNX Runtime genera embeddings CLIP y pgvector ordena candidatos por similitud coseno.
+- **Almacenamiento:** una interfaz separa los metadatos PostgreSQL de los archivos físicos; la implementación actual usa almacenamiento local persistente.
+- **Entrega web:** Nginx sirve el bundle frontend y reenvía `/api` a Express bajo un único origen.
+- **Automatización:** GitHub Actions valida calidad, integración PostgreSQL, E2E y contenedores de producción.
 
 ## Stack tecnológico
 
@@ -66,6 +84,53 @@ Adapta las URLs PostgreSQL de `.env`. Deben existir bases separadas para desarro
 El backend usa `DATABASE_URL`; `DATABASE_TEST_URL` es obligatoria para `test:db` y `DATABASE_E2E_URL` para Playwright. El frontend toma `VITE_API_URL` de `apps/web/.env.example`.
 
 Para búsqueda visual, descarga y verifica el artefacto fijado siguiendo [docs/VISUAL_SEARCH_SPIKE.md](docs/VISUAL_SEARCH_SPIKE.md), guárdalo en `.data/models` y configura `VISUAL_MODEL_PATH`. El modelo, uploads y temporales están ignorados por Git.
+
+## Inicio rápido
+
+Este recorrido utiliza PostgreSQL proporcionado por Docker y ejecuta frontend y API como procesos locales:
+
+1. Instala Node.js 24, npm 11 y Docker Compose.
+2. Instala las dependencias:
+
+   ```bash
+   npm install
+   ```
+
+3. Crea el archivo local de entorno:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   En PowerShell:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+4. En `.env`, selecciona las URLs comentadas para Docker que utilizan el puerto `5434`.
+5. Arranca PostgreSQL y comprueba su estado:
+
+   ```bash
+   docker compose up -d
+   docker compose ps
+   ```
+
+6. Aplica las migraciones:
+
+   ```bash
+   npm run db:migrate
+   ```
+
+7. Inicia API y frontend:
+
+   ```bash
+   npm run dev
+   ```
+
+8. Abre `http://localhost:5173`. La API puede comprobarse en `http://localhost:3000/api/v1/health`.
+
+El `compose.yml` de desarrollo levanta PostgreSQL, no la API ni el frontend. El modelo ONNX tampoco es obligatorio para iniciar o utilizar el resto de la aplicación: si no se provisiona, únicamente la búsqueda visual permanece indisponible.
 
 ### PostgreSQL local o Docker
 
@@ -101,7 +166,32 @@ El seed es opcional e idempotente:
 npm run db:seed
 ```
 
-Crea datos de demostración sin contraseñas, imágenes binarias ni credenciales utilizables. Para una prueba manual debe registrarse un usuario desde la interfaz o mediante `POST /api/v1/auth/register`; no existen credenciales demo predefinidas.
+Crea datos de demostración sin contraseñas, imágenes binarias ni credenciales utilizables. Para una prueba local debe registrarse un usuario desde la interfaz o mediante `POST /api/v1/auth/register`. Las credenciales indicadas al final del README pertenecen exclusivamente al entorno de demostración desplegado y no son creadas por el seed.
+
+## Estructura del proyecto
+
+```text
+red-huella/
+├── apps/
+│   ├── api/                  # API Express, servicios, repositories y Drizzle
+│   └── web/                  # Aplicación React/Vite y funcionalidades de interfaz
+├── database/
+│   └── migrations/           # Migraciones SQL versionadas
+├── docker/
+│   ├── ci-postgres/          # PostgreSQL con extensiones para CI
+│   ├── nginx/                # Reverse proxy y servidor del frontend
+│   └── postgres/             # Imagen PostgreSQL de producción
+├── docs/                     # Arquitectura, API, ADR, seguridad y operación
+├── tests/e2e/                # Recorridos Playwright y bootstrap aislado
+├── .github/workflows/        # Integración continua
+├── compose.yml               # PostgreSQL para desarrollo
+├── compose.prod.yml          # Stack de producción reproducible
+├── .env.example              # Configuración local sin secretos
+├── .env.production.example   # Plantilla operativa sin secretos reales
+└── package.json              # Scripts y coordinación de npm workspaces
+```
+
+Frontend y backend son workspaces independientes coordinados desde la raíz. Las migraciones son la única autoridad del esquema. Los archivos generados, uploads, temporales y el modelo ONNX viven en `.data` y no se versionan.
 
 ## Tests y calidad
 
@@ -166,10 +256,13 @@ El trabajo futuro se priorizará con evidencia: dataset representativo y Recall@
 - [Deployment](docs/DEPLOYMENT.md)
 - [Checklist de entrega](docs/DELIVERY-CHECKLIST.md)
 
-## acceso a sitio de prueba y documentacion 
+## Acceso de demostración y documentación
 
-- Slide 
-https://docs.google.com/presentation/d/1IAFRZjlou_UhLMwu-TGyWwsjQVBK3Te8/edit?usp=sharing&ouid=102368770880966002232&rtpof=true&sd=true
+- slide presentacion: `https://docs.google.com/presentation/d/1UnoUEN47D84QB0bbLWvQGo6GCegUCTE1/edit?usp=sharing&ouid=102368770880966002232&rtpof=true&sd=true`
 
-- usuario test  ( prueba@test.com )
-- password test ( pruebatest123 )
+- sitio web montado: `https://51-255-39-243.sslip.io/`
+
+Credenciales destinadas exclusivamente al entorno de demostración:
+
+- Usuario: `prueba@test.com`
+- Contraseña: `pruebatest123`
