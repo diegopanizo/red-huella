@@ -20,11 +20,18 @@ import { createApp } from '../app.js'
 import { env } from '../config/index.js'
 import * as schema from '../database/schema/index.js'
 import { assertSafeTestDatabaseUrl } from '../database/test-database.js'
+import { DrizzleAuthRegistrationRepository } from '../repositories/drizzle-auth-registration.repository.js'
+import { DrizzleSessionRepository } from '../repositories/drizzle-session.repository.js'
+import { DrizzleUserRepository } from '../repositories/drizzle-user.repository.js'
+import { createAuthRouter } from '../routes/auth.routes.js'
 import { createPublicationRouter } from '../routes/publication.routes.js'
 import { VisualSearchError } from './visual-search-errors.js'
 
 const pool = new Pool({ connectionString: assertSafeTestDatabaseUrl(env) })
 const database = drizzle({ client: pool, schema })
+const users = new DrizzleUserRepository(database)
+const sessions = new DrizzleSessionRepository(database)
+const registrations = new DrizzleAuthRegistrationRepository(database)
 const embedding = Float32Array.from({ length: 512 }, (_, index) =>
   index === 0 ? 1 : 0,
 )
@@ -206,7 +213,10 @@ function testApp(
   userMax = 100,
 ) {
   return createApp({
+    authRouter: createAuthRouter({ users, sessions, registrations }),
     publicationRouter: createPublicationRouter({
+      users,
+      sessions,
       visualEmbeddingGenerator: generator,
       visualSearch: { searchSimilarPublications: search },
       visualSearchRateLimits: { userMax, ipMax: 100 },
