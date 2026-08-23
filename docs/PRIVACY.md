@@ -1,5 +1,11 @@
 # Privacidad
 
+## Revisión de cierre - Milestone 12
+
+Los controles técnicos de privacidad están implementados y el despliegue público permanece pendiente. Red Huella ya trata datos de cuentas y publicaciones en desarrollo/demo; antes de aceptar usuarios reales se concretarán base jurídica, responsables, derechos, retención y textos aplicables con asesoramiento adecuado.
+
+La revisión confirma que email de acceso, contacto, ubicación exacta, storage keys, checksums, embeddings y paths del modelo no se incorporan a DTOs públicos generales, mapas, logs o errores. Persisten como riesgos aceptados el contacto en texto plano, la falta de una matriz operativa de retención y la necesidad de cifrado y gestión de claves antes de producción real. Esta revisión sustituye cualquier descripción histórica posterior que presente la aplicación como una estrategia aún no implementada.
+
 ## Embeddings visuales
 
 Son datos derivados internos asociados a imagen, modelo, versión y checksum. No aparecen en publicaciones, listados, `/mine`, `/manage`, mapa, contacto, logs ni errores, y los repositories públicos no hacen joins a su tabla. Una futura imagen de consulta será temporal y no persistida. CLIP solo podrá proponer candidatos, nunca identificación individual confirmada.

@@ -43,6 +43,32 @@ describe('parseEnvironment', () => {
       parseEnvironment({ ...validEnvironment, PORT: '70000', WEB_ORIGIN: '*' }),
     ).toThrow(/Configuración de entorno no válida/)
   })
+  it('rechaza un origen que contiene un path', () => {
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        WEB_ORIGIN: 'https://red-huella.example/app',
+      }),
+    ).toThrow(/esquema, host y puerto opcional/)
+  })
+
+  it('exige HTTPS para el origen web de producción', () => {
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        NODE_ENV: 'production',
+        WEB_ORIGIN: 'http://red-huella.example',
+      }),
+    ).toThrow(/HTTPS en producción/)
+    expect(
+      parseEnvironment({
+        ...validEnvironment,
+        NODE_ENV: 'production',
+        WEB_ORIGIN: 'https://red-huella.example',
+      }).WEB_ORIGIN,
+    ).toBe('https://red-huella.example')
+  })
+
   it('solo acepta el driver local y una ruta no vacia', () => {
     expect(() =>
       parseEnvironment({ ...validEnvironment, IMAGE_STORAGE_DRIVER: 's3' }),

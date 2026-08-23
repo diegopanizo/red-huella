@@ -84,14 +84,15 @@ La validación manual posterior confirmó el recorrido real de navegador y un ga
 
 El roadmap original seguía una evolución incremental de producto. Una vez completado el núcleo funcional demostrable del TFM, las capacidades no esenciales pasan a trabajo futuro y la secuencia obligatoria se concentra en calidad, validación, despliegue reproducible y preparación de la entrega académica.
 
-## Milestone 12 — Calidad final y hardening
+## Milestone 12 — Calidad final y hardening (completado)
 
-- Revisar deuda técnica crítica, permisos, autorización, validaciones y manejo de errores.
-- Revisar logging, configuración y dependencias con criterios prácticos de seguridad.
-- Actualizar el threat model y contrastar los controles con OWASP.
-- Corregir únicamente problemas críticos o de alto riesgo respaldados por evidencia.
+- Auditoría de auth/sesiones, autorización, publicaciones, imágenes, geolocalización, contacto, búsqueda visual, frontend, configuración, logging y dependencias.
+- Revisión OWASP Top 10/API Security sin hallazgos críticos ni altos y sin evidencia de IDOR, inyección o exposición excesiva en los contratos inspeccionados.
+- Threat model actualizado con activos, actores, fronteras, amenazas, mitigaciones y riesgos operativos aceptados.
+- `WEB_ORIGIN` endurecido: origen exacto sin path y HTTPS obligatorio en producción.
+- Validación completa: 265 tests generales, 99 tests PostgreSQL y auditoría runtime sin vulnerabilidades conocidas.
 
-Este milestone absorbe el alcance esencial de la antigua auditoría de seguridad. No incluye el desarrollo de Favoritos.
+Este milestone absorbe el alcance esencial de la antigua auditoría de seguridad. No incluyó nuevas funcionalidades, Favoritos ni refactors amplios; los riesgos dependientes de producto o infraestructura quedan documentados para fases posteriores.
 
 ## Milestone 13 — Testing E2E y validación funcional
 

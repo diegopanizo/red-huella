@@ -21,55 +21,78 @@ const postgresUrlSchema = z.string().refine(
   { message: 'Debe ser una URL PostgreSQL válida' },
 )
 
-const environmentSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']),
-  PORT: z.coerce.number().int().min(1).max(65_535),
-  WEB_ORIGIN: z.url().refine((value) => !value.endsWith('/'), {
-    message: 'WEB_ORIGIN no debe terminar en /',
-  }),
-  DATABASE_URL: postgresUrlSchema,
-  DATABASE_TEST_URL: postgresUrlSchema.optional(),
-  LOG_LEVEL: z.enum([
-    'fatal',
-    'error',
-    'warn',
-    'info',
-    'debug',
-    'trace',
-    'silent',
-  ]),
-  IMAGE_STORAGE_DRIVER: z.literal('local').default('local'),
-  IMAGE_STORAGE_LOCAL_ROOT: z
-    .string()
-    .trim()
-    .min(1)
-    .default('.data/uploads')
-    .transform((value) => path.resolve(repositoryRoot, value)),
-  VISUAL_MODEL_PATH: z
-    .string()
-    .trim()
-    .min(1)
-    .optional()
-    .transform((value) =>
-      value === undefined ? undefined : path.resolve(repositoryRoot, value),
-    ),
-  VISUAL_EMBEDDING_PROCESSOR_ENABLED: z
-    .enum(['true', 'false'])
-    .default('false')
-    .transform((value) => value === 'true'),
-  VISUAL_EMBEDDING_POLL_INTERVAL_MS: z.coerce
-    .number()
-    .int()
-    .min(5_000)
-    .max(3_600_000)
-    .default(30_000),
-  VISUAL_EMBEDDING_BATCH_SIZE: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(50)
-    .default(5),
-})
+const webOriginSchema = z.url().refine(
+  (value) => {
+    try {
+      return new URL(value).origin === value
+    } catch {
+      return false
+    }
+  },
+  {
+    message: 'WEB_ORIGIN debe contener solo esquema, host y puerto opcional',
+  },
+)
+
+const environmentSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']),
+    PORT: z.coerce.number().int().min(1).max(65_535),
+    WEB_ORIGIN: webOriginSchema,
+    DATABASE_URL: postgresUrlSchema,
+    DATABASE_TEST_URL: postgresUrlSchema.optional(),
+    LOG_LEVEL: z.enum([
+      'fatal',
+      'error',
+      'warn',
+      'info',
+      'debug',
+      'trace',
+      'silent',
+    ]),
+    IMAGE_STORAGE_DRIVER: z.literal('local').default('local'),
+    IMAGE_STORAGE_LOCAL_ROOT: z
+      .string()
+      .trim()
+      .min(1)
+      .default('.data/uploads')
+      .transform((value) => path.resolve(repositoryRoot, value)),
+    VISUAL_MODEL_PATH: z
+      .string()
+      .trim()
+      .min(1)
+      .optional()
+      .transform((value) =>
+        value === undefined ? undefined : path.resolve(repositoryRoot, value),
+      ),
+    VISUAL_EMBEDDING_PROCESSOR_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    VISUAL_EMBEDDING_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(5_000)
+      .max(3_600_000)
+      .default(30_000),
+    VISUAL_EMBEDDING_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .default(5),
+  })
+  .superRefine((value, context) => {
+    if (
+      value.NODE_ENV === 'production' &&
+      new URL(value.WEB_ORIGIN).protocol !== 'https:'
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['WEB_ORIGIN'],
+        message: 'WEB_ORIGIN debe usar HTTPS en producción',
+      })
+  })
 
 export type Environment = z.infer<typeof environmentSchema>
 

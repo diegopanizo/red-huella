@@ -10,6 +10,10 @@ Bloque 3 prueba ciclos vacíos sin ruido, lote acotado y secuencial, continuidad
 
 Bloque 4 prueba service/DTO y errores globales sin ONNX real; Supertest cubre autenticación, Origin, multipart, ausencia/multiplicidad/8 MiB, filtros, 429, 503, no-store y no persistencia. PostgreSQL prueba coseno exacto, orden, mejor imagen por publicación, READY/modelo/revisión, visibilidad, tipo, especie y límite mediante vectores sintéticos.
 
+## Milestone 12 - hardening
+
+La regresión de configuración comprueba que `WEB_ORIGIN` es un origen exacto sin path y que producción rechaza HTTP pero acepta HTTPS. La auditoría reutiliza las suites existentes de auth, ownership, contacto, imágenes, PostGIS/mapa y búsqueda visual como evidencia de controles; no se añaden tests ficticios cuando no cambia comportamiento. Los riesgos operativos aceptados se verificarán en E2E/deployment cuando exista la topología correspondiente.
+
 ## Frontend funcional
 
 Vitest, React Testing Library y jsdom prueban render tras loading, card/placeholder, filtros en URL, empty state, redirección protegida, validación de registro y submit de login con `credentials: include`. Se prueban resultados observables, no snapshots.

@@ -22,6 +22,10 @@ El frontend owner encapsula WhatsApp, teléfono y email en `ContactSettingsField
 
 `PublicationContactPanel` consume `/contact` exclusivamente tras click. Su query nace deshabilitada, usa `staleTime: 0`, `gcTime: 0` y una key formada solo por recurso e ID. Ocultar, cambiar de publicación, desmontar o cerrar sesión elimina la PII de TanStack Query. Los helpers puros construyen exclusivamente `https://wa.me`, `tel:` y `mailto:` después de validación defensiva; los parámetros con texto se codifican mediante `URLSearchParams`.
 
+## Hardening de cierre - Milestone 12
+
+La auditoría final conserva la arquitectura existente y no introduce capas ni dependencias. Se revisaron las fronteras Browser/API, API/PostgreSQL, API/storage y API/Sharp-ONNX frente a acceso roto, inyección, exposición excesiva y agotamiento de recursos. La configuración ahora rechaza un `WEB_ORIGIN` con path y exige HTTPS en producción, en coherencia con la cookie `Secure`; desarrollo y test conservan HTTP local. El threat model y los riesgos operativos aceptados se mantienen en `SECURITY.md`.
+
 ## Flujo frontend
 
 La búsqueda visual usa una ruta dedicada `/search-by-image`, enlazada desde Explorar para no sobrecargar el mapa. `VisualSearchPage` presenta la interacción; `useVisualSearch` mantiene `File`, object URL, estados y cancelación; el service construye `FormData` y conserva cookies. Cambiar foto, repetir, resetear o desmontar aborta la solicitud anterior, y un identificador monotónico impide que una respuesta obsoleta sustituya resultados recientes.

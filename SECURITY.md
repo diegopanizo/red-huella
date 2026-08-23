@@ -1,5 +1,46 @@
 # Política y estrategia de seguridad
 
+## Threat model de cierre - Milestone 12
+
+### Activos y actores
+
+Los activos principales son credenciales y sesiones, PII de contacto, ubicaciones exactas, publicaciones e imagenes, objetos de almacenamiento, embeddings, modelo ONNX, disponibilidad de API/PostgreSQL y configuracion de despliegue. Los actores considerados son visitantes anonimos, usuarios autenticados, propietarios de publicaciones, usuarios bloqueados, clientes automatizados abusivos y operadores con acceso al entorno. No existen roles administrativos funcionales en el producto actual.
+
+### Fronteras de confianza
+
+1. Navegador -> API: toda entrada HTTP es no confiable; CORS no sustituye autenticacion, Origin, validacion ni ownership.
+2. API -> PostgreSQL/PostGIS/pgvector: repositories y queries parametrizadas son la frontera de persistencia; las migraciones usan un proceso separado.
+3. API -> filesystem privado: solo `ImageStorage` resuelve keys generadas por servidor; uploads temporales y objetos no estan bajo assets publicos.
+4. API -> Sharp/ONNX: bytes hostiles se acotan y normalizan antes de inferencia; modelo y path son configuracion operativa confiable.
+5. Frontend -> navegador/servicios externos: geolocalizacion requiere accion explicita, contacto genera hosts/esquemas allowlisted y tiles OSM son solo desarrollo/demo.
+
+### Amenazas y mitigaciones verificadas
+
+| Amenaza                  | Escenario                                                                            | Mitigaciones actuales                                                                                                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BOLA/IDOR                | Usar el UUID de otra publicacion o imagen para modificarla o leer datos owner        | Sesion en backend, `userId` tomado de `request.auth`, ownership en service/repository y 404/403 estables; `/manage` es owner-only                                                   |
+| Fallos de autenticacion  | Fuerza bruta, sesion robada/fijada o usuario bloqueado                               | Argon2id, verificacion dummy, token opaco CSPRNG de 256 bits almacenado como SHA-256, cookie HttpOnly/SameSite Strict/Secure en produccion, expiracion, revocacion y usuario activo |
+| CSRF/CORS                | Mutacion desde un sitio no confiable                                                 | Origin exacto en mutaciones, CORS con credenciales y allowlist unica, SameSite Strict; `WEB_ORIGIN` debe ser un origen puro y HTTPS en produccion                                   |
+| Inyeccion                | SQL/PostGIS/pgvector, sort o filtros controlados por cliente                         | Zod estricto, enums/allowlists, Drizzle y plantillas `sql` parametrizadas; no hay SQL, comandos ni paths concatenados desde entrada HTTP                                            |
+| Exposicion excesiva      | Email, contacto, ubicacion exacta, keys, checksum, vectores o paths en DTO/log/error | Selecciones y DTO allowlist, endpoints dedicados owner/contacto, errores estables y logger sin body/query/headers sensibles                                                         |
+| Upload malicioso         | Path traversal, formato falso, EXIF/GPS, bomba de descompresion o archivo animado    | Nombres UUID, storage privado y contenido por UUID; Sharp valida formato real, pagina, 8 MiB, 25 MP y 10.000 px/eje, re-encodea WebP y elimina metadatos/original                   |
+| Abuso geoespacial        | Reconstruccion o filtrado por punto exacto                                           | Toda funcion publica usa exclusivamente `public_location` persistida; exacta solo en `/manage`; geolocalizacion del visitante es voluntaria y efimera                               |
+| Abuso de contacto        | Scraping de PII o URI manipulada                                                     | Autenticacion, publicacion/autor ACTIVE, revelacion bajo click, respuesta no-store, rate limit por usuario/IP y links con esquemas/host fijos                                       |
+| Abuso de busqueda visual | Persistencia de query, imagen hostil, fuga de embedding/modelo o consumo excesivo    | Buffer efimero de 8 MiB, validacion Sharp, sesion+Origin, rate limit usuario/IP, respuesta reducida no-store y errores sin detalles ONNX                                            |
+| Configuracion insegura   | Arranque con origen HTTP/path, secretos versionados o confianza incorrecta en proxy  | Schema fail-fast, `.env` fuera de Git, ejemplo sin secretos y `trust proxy` deshabilitado hasta definir topologia                                                                   |
+
+### Riesgos aceptados y trabajo operativo
+
+- La existencia de una cuenta puede inferirse mediante el `409` de registro. Ocultarla correctamente se vincula al futuro flujo de verificacion de email y recuperacion, no a un cambio aislado de copy/status.
+- Contacto permanece en texto plano en PostgreSQL. Produccion requiere permisos minimos, backups cifrados y evaluacion de envelope encryption/KMS.
+- Los rate limiters son por proceso. Varias instancias requieren store compartido o control equivalente en el edge.
+- La busqueda visual no limita explicitamente inferencias simultaneas; deployment debe medir CPU/RSS y definir concurrencia/cola antes de exponer carga no controlada.
+- La integridad y procedencia del fichero ONNX deben garantizarse en build/release; el runtime confia en el path configurado.
+- La purga de sesiones expiradas y el reintento de la outbox de borrado necesitan programacion y observabilidad en el runbook.
+- `trust proxy` sigue deshabilitado. Solo se configurara con la topologia exacta de proxies para no permitir spoofing de IP.
+
+La revision OWASP Top 10 y OWASP API Security del Milestone 12 no encontro hallazgos criticos ni altos. El unico cambio de codigo fue el endurecimiento fail-fast de `WEB_ORIGIN`; los riesgos medios que requieren producto, KMS, infraestructura o medicion se aceptan explicitamente para Milestone 14.
+
 ## Persistencia de embeddings visuales
 
 Los vectores son internos y no forman parte de contratos HTTP, logs o errores. La persistencia acepta solo 512 valores finitos con norma L2 aproximadamente uno y no normaliza silenciosamente. `markReady`/`markFailed` exigen el checksum vigente para descartar inferencias obsoletas. Los fallos se limitan a una allowlist y nunca incluyen stacks, mensajes ONNX, rutas, bytes o PII. La búsqueda futura deberá comparar solo READY del mismo modelo y revisión.
