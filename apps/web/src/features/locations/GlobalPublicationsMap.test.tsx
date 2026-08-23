@@ -14,6 +14,7 @@ import type { MapPublication } from '../../types'
 import { GlobalPublicationsMap } from './GlobalPublicationsMap'
 
 const marker = vi.fn()
+const markerClusterGroup = vi.fn()
 const mapEvents = vi.fn()
 const map = {
   getZoom: () => 6,
@@ -35,6 +36,16 @@ const map = {
   })),
 }
 vi.mock('leaflet', () => ({ divIcon: (options: unknown) => options }))
+vi.mock('react-leaflet-cluster', () => ({
+  default: (props: {
+    children: React.ReactNode
+    chunkedLoading: boolean
+    showCoverageOnHover: boolean
+  }) => {
+    markerClusterGroup(props)
+    return <div data-testid="marker-cluster-group">{props.children}</div>
+  },
+}))
 vi.mock('react-leaflet', () => ({
   MapContainer: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="global-map">{children}</div>
@@ -87,6 +98,7 @@ const publication = {
 afterEach(() => {
   cleanup()
   marker.mockClear()
+  markerClusterGroup.mockClear()
   mapEvents.mockClear()
   map.flyTo.mockClear()
   map.once.mockClear()
@@ -114,6 +126,15 @@ describe('GlobalPublicationsMap', () => {
     const markerButton = screen.getByRole('button', {
       name: 'Perdido: Luna; zona aproximada',
     })
+    expect(screen.getByTestId('marker-cluster-group')).toContainElement(
+      markerButton,
+    )
+    expect(markerClusterGroup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chunkedLoading: true,
+        showCoverageOnHover: false,
+      }),
+    )
     fireEvent.click(markerButton)
     expect(onSelectPublication).toHaveBeenCalledWith(publication.id)
     await waitFor(() => expect(onBoundsChange).toHaveBeenCalledOnce())

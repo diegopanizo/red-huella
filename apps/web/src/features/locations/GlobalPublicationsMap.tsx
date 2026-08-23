@@ -1,5 +1,8 @@
 import { divIcon } from 'leaflet'
 import React from 'react'
+import MarkerClusterGroup from 'react-leaflet-cluster'
+import 'react-leaflet-cluster/dist/assets/MarkerCluster.css'
+import 'react-leaflet-cluster/dist/assets/MarkerCluster.Default.css'
 import {
   MapContainer,
   Marker,
@@ -147,71 +150,73 @@ export function GlobalPublicationsMap({
           publication={selected}
           programmaticMoveRef={programmaticMoveRef}
         />
-        {publications.map((publication) => {
-          const active = publication.id === selectedPublicationId
-          const markerLabel = `${typeLabels[publication.type]}: ${publication.animal.name ?? publication.title}; zona aproximada`
-          return (
-            <Marker
-              key={publication.id}
-              position={[
-                publication.publicLocation.lat,
-                publication.publicLocation.long,
-              ]}
-              icon={divIcon({
-                className: '',
-                html: `<span class="approximate-marker ${publication.type.toLowerCase()}${active ? ' selected' : ''}" aria-hidden="true">${markerLetters[publication.type]}</span>`,
-                iconSize: [36, 36],
-                iconAnchor: [18, 18],
-              })}
-              keyboard
-              title={markerLabel}
-              alt={markerLabel}
-              eventHandlers={{
-                click: () => onSelectPublication(publication.id),
-              }}
-            >
-              <Popup
-                className="publication-map-popup"
-                maxWidth={320}
-                minWidth={280}
+        <MarkerClusterGroup chunkedLoading showCoverageOnHover={false}>
+          {publications.map((publication) => {
+            const active = publication.id === selectedPublicationId
+            const markerLabel = `${typeLabels[publication.type]}: ${publication.animal.name ?? publication.title}; zona aproximada`
+            return (
+              <Marker
+                key={publication.id}
+                position={[
+                  publication.publicLocation.lat,
+                  publication.publicLocation.long,
+                ]}
+                icon={divIcon({
+                  className: '',
+                  html: `<span class="approximate-marker ${publication.type.toLowerCase()}${active ? ' selected' : ''}" aria-hidden="true">${markerLetters[publication.type]}</span>`,
+                  iconSize: [36, 36],
+                  iconAnchor: [18, 18],
+                })}
+                keyboard
+                title={markerLabel}
+                alt={markerLabel}
+                eventHandlers={{
+                  click: () => onSelectPublication(publication.id),
+                }}
               >
-                <article
-                  className="map-popup"
-                  data-publication-id={publication.id}
+                <Popup
+                  className="publication-map-popup"
+                  maxWidth={320}
+                  minWidth={280}
                 >
-                  <Thumbnail publication={publication} />
-                  <div>
-                    <span
-                      className={`badge map-popup-badge ${publication.type.toLowerCase()}`}
-                    >
-                      {typeLabels[publication.type]}
-                    </span>
-                    <strong>
-                      {publication.animal.name ?? publication.title}
-                    </strong>
-                    {publication.animal.name && (
-                      <span>{publication.title}</span>
-                    )}
-                    <span>
-                      {speciesLabels[publication.animal.species]}
-                      {publication.animal.breed?.trim()
-                        ? ` · ${publication.animal.breed}`
-                        : ''}
-                    </span>
-                    <span>{formatDate(publication.eventDate)}</span>
-                    <span>Zona aproximada protegida</span>
-                    <Link
-                      to={`/publications/${publication.id}`}
-                      onClick={() => onOpenPublication(publication.id)}
-                    >
-                      Ver ficha
-                    </Link>
-                  </div>
-                </article>
-              </Popup>
-            </Marker>
-          )
-        })}
+                  <article
+                    className="map-popup"
+                    data-publication-id={publication.id}
+                  >
+                    <Thumbnail publication={publication} />
+                    <div>
+                      <span
+                        className={`badge map-popup-badge ${publication.type.toLowerCase()}`}
+                      >
+                        {typeLabels[publication.type]}
+                      </span>
+                      <strong>
+                        {publication.animal.name ?? publication.title}
+                      </strong>
+                      {publication.animal.name && (
+                        <span>{publication.title}</span>
+                      )}
+                      <span>
+                        {speciesLabels[publication.animal.species]}
+                        {publication.animal.breed?.trim()
+                          ? ` · ${publication.animal.breed}`
+                          : ''}
+                      </span>
+                      <span>{formatDate(publication.eventDate)}</span>
+                      <span>Zona aproximada protegida</span>
+                      <Link
+                        to={`/publications/${publication.id}`}
+                        onClick={() => onOpenPublication(publication.id)}
+                      >
+                        Ver ficha
+                      </Link>
+                    </div>
+                  </article>
+                </Popup>
+              </Marker>
+            )
+          })}
+        </MarkerClusterGroup>
       </MapContainer>
       {tileError && (
         <p role="alert">
