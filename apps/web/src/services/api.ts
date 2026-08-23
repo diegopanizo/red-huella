@@ -71,7 +71,7 @@ async function requestJson<T>(
 
 export function resolveApiAssetUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path
-  return new URL(path, new URL(apiUrl).origin).toString()
+  return new URL(path, window.location.origin).toString()
 }
 
 export const api = {
