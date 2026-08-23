@@ -36,9 +36,9 @@ Modelo y API para animales/publicaciones, estados, propiedad, validación y test
 
 Navegación, identidad y flujos de publicaciones accesibles y responsive conectados a la API.
 
-## Milestone 7 — Imágenes (en curso)
+## Milestone 7 — Imágenes (completado)
 
-Upload seguro, procesamiento, eliminación de EXIF, almacenamiento desacoplado y ciclo de borrado. Los Bloques 1–4 implementan schema/storage, Sharp, backend HTTP y experiencia frontend respectivamente. El milestone continúa en curso hasta su cierre final; no se adelantan geolocalización ni funcionalidades posteriores.
+Implementado el ciclo completo de imágenes por publicación: almacenamiento desacoplado con adaptador local, normalización segura JPEG/PNG/WebP mediante Sharp, variantes WebP display/thumbnail sin metadatos ni originales, upload multipart acotado, ownership y reglas por estado, máximo de seis imágenes, reordenación, imagen principal, eliminación y outbox de borrado con compensación ante fallos. El frontend incorpora selección y previews, reintento del upload posterior a la creación, galería, placeholders y gestión owner responsive. Las capas unitarias, HTTP, PostgreSQL y frontend cubren límites, formatos, seguridad, concurrencia, consistencia y cleanup.
 
 ## Milestone 8 — Geolocalización (completado)
 
