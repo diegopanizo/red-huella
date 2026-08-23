@@ -2,7 +2,7 @@
 
 Red Huella es una aplicación web para publicar y localizar animales perdidos, encontrados o en adopción. Centraliza avisos dispersos, permite explorarlos por criterios y zona aproximada y ofrece contacto protegido entre usuarios.
 
-Es un Trabajo de Fin de Máster con el núcleo funcional completo. Los milestones M0–M15 están cerrados, la integración continua valida código, PostgreSQL y recorridos críticos, y el deployment de referencia se construye y arranca de forma reproducible. Las limitaciones operativas y de producto permanecen documentadas explícitamente.
+
 
 ## Funcionalidades principales
 
@@ -165,3 +165,11 @@ El trabajo futuro se priorizará con evidencia: dataset representativo y Recall@
 - [Seguridad](SECURITY.md)
 - [Deployment](docs/DEPLOYMENT.md)
 - [Checklist de entrega](docs/DELIVERY-CHECKLIST.md)
+
+## acceso a sitio de prueba y documentacion 
+
+- Slide 
+https://docs.google.com/presentation/d/1IAFRZjlou_UhLMwu-TGyWwsjQVBK3Te8/edit?usp=sharing&ouid=102368770880966002232&rtpof=true&sd=true
+
+- usuario test  ( prueba@test.com )
+- password test ( pruebatest123 )
