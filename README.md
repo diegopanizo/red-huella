@@ -147,6 +147,17 @@ npm run test:db
 
 El comando requiere `NODE_ENV=test`, `DATABASE_TEST_URL` diferente de `DATABASE_URL` y una base cuyo nombre termine en `_test`. Aplica migrations y limpia exclusivamente las tablas conocidas de esa base de test entre pruebas.
 
+## Tests E2E
+
+Playwright valida seis recorridos críticos en Chromium contra API, frontend y PostgreSQL reales. Configura `DATABASE_E2E_URL` con una base exclusiva terminada en `_e2e`; la suite aplica migraciones y limpia solo ese entorno:
+
+```bash
+npm run test:e2e
+npm run test:e2e:headed
+```
+
+La instalación inicial del navegador se realiza con `npx playwright install chromium`. Se requieren PostgreSQL 17, PostGIS y pgvector. Los servidores de prueba usan los puertos aislados 3100/5174 y los tiles externos quedan bloqueados. Consulta [docs/TESTING.md](docs/TESTING.md) para las salvaguardas, artefactos y alcance del mock HTTP de búsqueda visual.
+
 ## Estructura del proyecto
 
 ```text

@@ -94,7 +94,7 @@ El roadmap original seguía una evolución incremental de producto. Una vez comp
 
 Este milestone absorbe el alcance esencial de la antigua auditoría de seguridad. No incluyó nuevas funcionalidades, Favoritos ni refactors amplios; los riesgos dependientes de producto o infraestructura quedan documentados para fases posteriores.
 
-## Milestone 13 — Testing E2E y validación funcional
+## Milestone 13 — Testing E2E y validación funcional (completado)
 
 Incorporar Playwright o una solución E2E equivalente para recorridos críticos, aislados y reproducibles. La prioridad es:
 
@@ -106,6 +106,8 @@ Incorporar Playwright o una solución E2E equivalente para recorridos críticos,
 6. búsqueda visual.
 
 El objetivo es validar los recorridos demostrables del TFM, no exigir una cobertura E2E exhaustiva.
+
+Se incorporaron seis recorridos Playwright sobre Chromium: autenticación y sesión, alta y gestión owner de una publicación, upload y galería, contacto protegido entre dos usuarios, búsqueda visual y experiencia móvil de «Cerca de mí» con lista/mapa. La suite usa PostgreSQL/PostGIS/pgvector real en una base dedicada `_e2e`, aplica migraciones, limpia solo sus tablas, genera datos sintéticos y bloquea tiles externos. La búsqueda visual intercepta exclusivamente su POST porque el modelo ONNX no es un artefacto versionado; el pipeline real permanece cubierto por integración. CI ejecuta la suite en un job separado.
 
 ## Milestone 14 — Deployment y operación
 

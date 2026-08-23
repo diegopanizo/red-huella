@@ -28,6 +28,8 @@
     "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "test:watch": "npm run test:watch --workspaces --if-present",
     "build": "npm run build --workspaces --if-present"
   },
@@ -37,6 +39,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^24.13.3",
     "concurrently": "^9.2.1",
     "eslint": "^10.8.0",

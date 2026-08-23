@@ -1355,6 +1355,7 @@ button.danger {
   }
   .section-title {
     align-items: flex-start;
+    flex-direction: column;
   }
   .nearby-search {
     align-items: stretch;

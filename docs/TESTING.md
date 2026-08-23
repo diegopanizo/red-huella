@@ -58,7 +58,7 @@ Tests actuales:
 - `apps/api/src/repositories/normalize-email.test.ts`: normalización determinista de email.
 - `apps/api/src/database/test-database.test.ts`: safeguards para impedir limpieza fuera de una base `_test` separada.
 
-La cobertura incluye reglas de autenticación, publicaciones, imágenes y geolocalización; los recorridos E2E completos siguen planificados.
+La cobertura incluye reglas de autenticación, publicaciones, imágenes y geolocalización, además de seis recorridos E2E críticos con Playwright.
 
 ## Ejecución
 
@@ -126,7 +126,22 @@ El Bloque 3 añade unitarios para normalización de longitud, bounds estándar, 
 
 ### End-to-End
 
-Playwright o una solución equivalente se añadirá en el Milestone 13 para recorridos críticos: registro/login, creación de publicaciones, imágenes, mapa/Cerca de mí, contacto y búsqueda visual. Se ejecutará en un entorno aislado con datos sintéticos y priorizará recorridos demostrables sobre cobertura exhaustiva.
+Playwright ejecuta seis recorridos críticos en Chromium: registro/login/logout, creación y apertura de gestión owner, upload/preview/galería, contacto bajo demanda, búsqueda visual y mapa/Cerca de mí en viewport móvil. Usa locators semánticos, datos sintéticos creados principalmente desde UI y una base PostgreSQL dedicada. Los tiles OSM quedan bloqueados para no depender de red externa.
+
+La petición `POST /publications/search-by-image` se intercepta con un contrato HTTP realista porque el modelo ONNX no se versiona ni se descarga en CI. No se mockean auth, sesiones, PostgreSQL, publicaciones, imágenes ni contacto; el pipeline ONNX real permanece validado en las suites de integración del Milestone 11.
+
+#### Ejecución E2E
+
+Se requiere PostgreSQL 17 con PostGIS y pgvector y una URL exclusiva cuyo nombre de base termine en `_e2e`:
+
+```bash
+DATABASE_E2E_URL=postgresql://USER:PASSWORD@localhost:5433/red_huella_e2e npm run test:e2e
+npm run test:e2e:headed
+```
+
+En Windows, configura `DATABASE_E2E_URL` en `.env` y ejecuta los mismos scripts. El global setup valida el sufijo `_e2e`, crea la base si falta mediante la base de mantenimiento, aplica todas las migraciones y elimina solo filas de tablas conocidas. Los archivos temporales se restringen a `.data/e2e`. Nunca debe reutilizarse la base de desarrollo.
+
+Playwright arranca API y Vite en `127.0.0.1:3100` y `127.0.0.1:5174`, sin reutilizar servidores existentes. Trazas se conservan en el primer reintento de CI; capturas se guardan solo al fallar y vídeos solo para fallos. El job `end-to-end` instala Chromium y usa la imagen PostgreSQL 17 del proyecto con ambas extensiones.
 
 ## Qué probar
 
@@ -154,7 +169,7 @@ La calibración final usa nueve observaciones controladas sin versionar imágene
 
 ## Calidad y CI
 
-Cada corrección incorporará una regresión cuando sea viable. La CI ejecuta calidad sin base en el job principal y `test:db` en un job separado con PostgreSQL 17 y credenciales efímeras. Los E2E permanecen fuera de alcance.
+Cada corrección incorporará una regresión cuando sea viable. La CI ejecuta calidad sin base en el job principal, `test:db` en un job PostgreSQL separado y Playwright en un tercer job E2E con PostgreSQL 17 y credenciales efímeras.
 
 ## Datos de prueba
 

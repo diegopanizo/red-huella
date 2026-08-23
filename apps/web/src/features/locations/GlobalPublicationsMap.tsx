@@ -174,7 +174,11 @@ export function GlobalPublicationsMap({
     (publication) => publication.id === selectedPublicationId,
   )
   return (
-    <div className="global-map-wrapper">
+    <div
+      className="global-map-wrapper"
+      role="region"
+      aria-label="Mapa global de publicaciones"
+    >
       <MapContainer
         className="global-map-canvas"
         bounds={[

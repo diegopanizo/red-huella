@@ -12,6 +12,7 @@ test-results/
 .data/uploads/
 .data/tmp/
 .data/models/
+.data/e2e/
 
 # Environment files (keep the documented template)
 .env
