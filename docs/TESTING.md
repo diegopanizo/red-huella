@@ -122,7 +122,7 @@ El Bloque 3 añade unitarios para normalización de longitud, bounds estándar, 
 
 ### End-to-End
 
-Playwright se añadirá en el Milestone 12 para recorridos críticos: identidad, publicar, buscar, proteger ubicación, favoritos y moderación cuando existan. Se ejecutará en un entorno aislado con datos sintéticos.
+Playwright o una solución equivalente se añadirá en el Milestone 13 para recorridos críticos: registro/login, creación de publicaciones, imágenes, mapa/Cerca de mí, contacto y búsqueda visual. Se ejecutará en un entorno aislado con datos sintéticos y priorizará recorridos demostrables sobre cobertura exhaustiva.
 
 ## Qué probar
 

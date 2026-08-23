@@ -49,11 +49,11 @@ Se mantendrá un monorepo con aplicaciones separadas y código compartido explí
 
 ### MVP
 
-Registro, login, perfil, publicaciones de animales perdidos, encontrados y en adopción, imágenes, búsqueda, filtros, ubicación, mapa, contacto por publicación y favoritos.
+Registro, login, perfil, publicaciones de animales perdidos, encontrados y en adopción, imágenes, búsqueda, filtros, ubicación, mapa y contacto por publicación.
 
 ### Futuras
 
-Protectoras, reportes, roles, moderación y matching tradicional entre publicaciones `LOST` y `FOUND`.
+Favoritos, protectoras, reportes, roles, moderación y matching tradicional entre publicaciones `LOST` y `FOUND`.
 
 ### Avanzadas
 

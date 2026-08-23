@@ -64,50 +64,104 @@ El refinamiento visual transversal iniciado en 2026 define tokens, jerarquía de
 
 El Bloque 0.1 valida de forma aislada embeddings CLIP ViT-B/32 de 512 dimensiones con Sharp y ONNX Runtime Node en CPU. El resultado provisional es Node/ONNX viable con reservas: no hay todavía PostgreSQL, pgvector, API, frontend ni arquitectura final, y la eficacia debe evaluarse con un dataset representativo antes de diseñar producto.
 
-El Bloque 1 incorpora pgvector 0.8.5, `vector(512)`, lifecycle versionado por imagen/checksum y repository interno. Generación, backfill, worker, API de búsqueda, ranking y frontend permanecen pendientes; Milestone 11 continúa **IN PROGRESS**.
+El Bloque 1 incorporó pgvector 0.8.5, `vector(512)`, lifecycle versionado por imagen/checksum y repository interno. En ese punto, generación, backfill, worker, API de búsqueda, ranking y frontend permanecían pendientes.
 
 El Bloque 2 incorpora checksum canónico, pipeline interno, PENDING no bloqueante para uploads y backfill manual idempotente/secuencial. API de búsqueda, ranking y frontend siguen pendientes.
 
-El Bloque 3 incorpora procesamiento automático opt-in mediante polling no solapado, lotes secuenciales, lifecycle de startup/shutdown, claim cooperativo con advisory locks y CLI de un solo ciclo. Mantiene el upload desacoplado y no incorpora API de búsqueda, ranking ni frontend; Milestone 11 continúa **IN PROGRESS**.
+El Bloque 3 incorporó procesamiento automático opt-in mediante polling no solapado, lotes secuenciales, lifecycle de startup/shutdown, claim cooperativo con advisory locks y CLI de un solo ciclo. Mantuvo el upload desacoplado; en ese punto, API de búsqueda, ranking y frontend permanecían pendientes.
 
-El Bloque 4 incorpora el endpoint backend autenticado de búsqueda por imagen, multipart efímero, rate limiting, ranking coseno exacto y un resultado reducido por publicación. El frontend, filtros geográficos, evaluación de calidad e índices ANN permanecen pendientes; Milestone 11 continúa **IN PROGRESS**.
+El Bloque 4 incorporó el endpoint backend autenticado de búsqueda por imagen, multipart efímero, rate limiting, ranking coseno exacto y un resultado reducido por publicación. En ese punto, frontend, filtros geográficos, evaluación de calidad e índices ANN permanecían pendientes.
 
-El Bloque 5 incorpora la ruta frontend autenticada `/search-by-image`, selección y preview efímeros, filtros simples, cancelación de solicitudes y cards centradas en la imagen coincidente. La búsqueda geográfica combinada, evaluación de calidad e índices ANN permanecen pendientes; Milestone 11 continúa **IN PROGRESS**.
+El Bloque 5 incorporó la ruta frontend autenticada `/search-by-image`, selección y preview efímeros, filtros simples, cancelación de solicitudes y cards centradas en la imagen coincidente. La búsqueda geográfica combinada, la evaluación con un dataset representativo y los índices ANN quedaron fuera de su alcance.
 
-El Bloque 6 valida API autenticada, multipart, ONNX real, pgvector, lifecycle PENDING→READY, filtros, concurrencia básica y consumo de memoria. El smoke visual completo en navegador no pudo ejecutarse en el entorno del agente y el conjunto de calibración no permite Recall@K; por ello el milestone permanece **IN PROGRESS** y sin threshold duro.
+El Bloque 6 validó API autenticada, multipart, ONNX real, pgvector, lifecycle PENDING→READY, filtros, concurrencia básica y consumo de memoria. El conjunto de calibración no permitía Recall@K ni justificaba un threshold duro; la validación manual posterior completó el recorrido de navegador.
 
 La validación manual posterior confirmó el recorrido real de navegador y un gato distinto con score `0,885872`. La calibración final de nueve casos mostró solapamiento incompatible con un threshold de identidad, consolidó el copy «Similitud visual» y mantuvo top-K. Con tests, integración, smoke y auditoría aprobados, Milestone 11 queda **COMPLETE**; evaluación de calidad con dataset representativo y cualquier ANN son mejoras futuras basadas en evidencia.
 
 > Cambio de orden aprobado al iniciar el Milestone 11: este número estaba reservado a Favoritos y la búsqueda visual figuraba más adelante. El spike se adelanta para resolver pronto la viabilidad técnica; Favoritos y los objetivos intermedios se desplazan sin afirmar que estén implementados.
 
-## Milestone 12 — Favoritos
+## Reorientación de la fase final
+
+El roadmap original seguía una evolución incremental de producto. Una vez completado el núcleo funcional demostrable del TFM, las capacidades no esenciales pasan a trabajo futuro y la secuencia obligatoria se concentra en calidad, validación, despliegue reproducible y preparación de la entrega académica.
+
+## Milestone 12 — Calidad final y hardening
+
+- Revisar deuda técnica crítica, permisos, autorización, validaciones y manejo de errores.
+- Revisar logging, configuración y dependencias con criterios prácticos de seguridad.
+- Actualizar el threat model y contrastar los controles con OWASP.
+- Corregir únicamente problemas críticos o de alto riesgo respaldados por evidencia.
+
+Este milestone absorbe el alcance esencial de la antigua auditoría de seguridad. No incluye el desarrollo de Favoritos.
+
+## Milestone 13 — Testing E2E y validación funcional
+
+Incorporar Playwright o una solución E2E equivalente para recorridos críticos, aislados y reproducibles. La prioridad es:
+
+1. registro y login;
+2. creación de publicaciones;
+3. gestión de imágenes;
+4. mapa y «Cerca de mí»;
+5. contacto entre usuarios;
+6. búsqueda visual.
+
+El objetivo es validar los recorridos demostrables del TFM, no exigir una cobertura E2E exhaustiva.
+
+## Milestone 14 — Deployment y operación
+
+- Preparar un entorno de producción realista para el TFM.
+- Definir variables de entorno, base de datos, migraciones, almacenamiento y modelo visual.
+- Configurar HTTPS, health/readiness, logs y backups básicos.
+- Documentar el procedimiento de arranque y un runbook operativo.
+
+No exige alta disponibilidad ni infraestructura empresarial.
+
+## Milestone 15 — Preparación final TFM
+
+- Completar el README definitivo: descripción, arquitectura, tecnologías, instalación, configuración, ejecución y tests.
+- Preparar capturas, URL pública y credenciales demo cuando correspondan.
+- Crear slides y vídeo/demo.
+- Consolidar checklist final, limitaciones conocidas y trabajo futuro.
+
+## Trabajo futuro
+
+Estas líneas no forman parte del criterio obligatorio de finalización del TFM.
+
+### Favoritos
 
 Persistencia, API y UI de favoritos con autorización.
 
-## Milestone 13 — Roles y moderación
+### Roles y moderación
 
 Protectoras, reportes, roles y operaciones administrativas auditables.
 
-## Milestone 14 — Matching tradicional
+### Matching tradicional
 
-Servicio independiente, score explicable con especie, raza, color, tamaño, sexo, distancia y fecha, más evaluación y tests.
+Servicio independiente y score explicable por especie, raza, color, tamaño, sexo, distancia y fecha, acompañado de evaluación y tests.
 
-## Milestone 15 — Testing E2E
+### Búsqueda visual futura
 
-Playwright, datos aislados y recorridos críticos automatizados.
+- Construir un dataset representativo.
+- Evaluar Recall@K y calibrar la calidad con evidencia.
+- Estudiar índices ANN si el volumen lo justifica.
+- Mejorar o sustituir los embeddings según resultados medibles.
 
-## Milestone 16 — Auditoría de seguridad
+### Otras mejoras
 
-Threat model actualizado, revisión OWASP, dependencias, permisos, configuración y pruebas de abuso.
+- Recuperación de cuenta y verificación de email.
+- Geocoding opcional con revisión previa de privacidad y proveedor.
+- Almacenamiento de imágenes compatible con S3/R2 y cifrado gestionado de PII cuando el entorno de producción lo requiera.
+- Rate limiting distribuido para despliegues con varias instancias.
+- PWA y mejoras de producto basadas en evidencia.
 
-## Milestone 17 — Deployment
+## Criterio de finalización del TFM
 
-Infraestructura, dominio, HTTPS, migraciones, backups, observabilidad y runbook.
+El TFM se considera finalizado cuando:
 
-## Milestone 18 — Preparación final TFM
+- M0–M15 están completos;
+- CI está verde y los tests críticos pasan;
+- la aplicación puede ejecutarse y desplegarse de forma reproducible;
+- la documentación está actualizada;
+- la demo es reproducible;
+- las limitaciones conocidas están documentadas explícitamente.
 
-- README definitivo y capturas.
-- Slides y URL pública.
-- Vídeo con captura durante la explicación y URL pública.
-- Credenciales demo y URLs de producción.
-- Checklist y documentación final de entrega.
+La implementación de los elementos de Trabajo futuro no es necesaria para cerrar el TFM.
